@@ -44,8 +44,9 @@ t0_dict, ap_dict = utils.get_tgps_and_ap_dicts(t0_geocent, ifos, ra, dec, psi)
 
 cond_psds = {}
 for ifo, freq_psd in pe_psds.items():
-    freq, psd = freq_psd.copy().T
     
+    # psd for whitening
+    freq, psd = freq_psd.copy().T
     m = freq >= 11
     psd[~m] = 100*max(psd[m]) # set values below 11 Hz to be equal to 100*max(psd)    
     
@@ -75,7 +76,6 @@ Nanalyze = Npre + Npost
 Tanalyze = Nanalyze*dt
 print('Will analyze {:.3f} s of data at {:.1f} Hz'.format(Tanalyze, 1/dt))
 
-rho_dict = OrderedDict() # stores acf 
 L_dict = OrderedDict()   # stores L such that cov matrix C = L^T L
 for ifo, data in data_dict.items():
     freq, psd = cond_psds[ifo]
@@ -85,9 +85,7 @@ for ifo, data in data_dict.items():
     # compute covariance matrix  C and its Cholesky decomposition L (~sqrt of C)
     C = sl.toeplitz(rho[:Nanalyze])
     L_dict[ifo] = np.linalg.cholesky(C)
-    
-    rho_dict[ifo] = rho[:Nanalyze]
-    
+        
 # Crop analysis data to specified duration.
 for ifo, I0 in i0_dict.items():
     # I0 = sample closest to desired time
@@ -143,6 +141,7 @@ for k, samples in td_samples.items():
 
     whitened = []
     unwhitened = []
+    bandpassed = []
 
     for j in indices:
 
@@ -170,23 +169,30 @@ for k, samples in td_samples.items():
                                        f_low=11, f_ref=fref,
                                        inclination=iota,
                                        phi_ref=phi_ref, ell_max=None)
-
+       
+        # Project
         h = rwf.generate_lal_waveform(hplus=hp, hcross=hc,
                                       times=time_dict[ifo], 
-                                      triggertime=tpeak_dict[ifo]) 
+                                      triggertime=tpeak_dict[ifo])
 
-        # whiten 
+        # Whiten 
         w_h = np.linalg.solve(L_dict[ifo], h)
+        
+        # Just bandpass 
+        fmin_bp, fmax_bp = 20, 500
+        h_bp = rwf.bandpass(h, time_dict[ifo], fmin_bp, fmax_bp)
 
-        # project onto detectors
+        # Project onto detectors
         Fp, Fc = ap_dict[ifo]
         h_ifo = Fp*h.real - Fc*h.imag
         w_h_ifo = Fp*w_h.real - Fc*w_h.imag
+        h_bp_ifo = Fp*h_bp.real - Fc*h_bp.imag
 
         unwhitened.append(h_ifo)
         whitened.append(w_h_ifo)
+        bandpassed.append(h_bp_ifo)
 
-    reconstructions[k] = {'wh':whitened, 'h':unwhitened}
+    reconstructions[k] = {'wh':whitened, 'h':unwhitened, 'bp':bandpassed, 'params':samples[indices]}
     
     # Save results as we go
     np.save(data_dir+f'waveform_reconstructions_L1.npy', reconstructions, allow_pickle=True)

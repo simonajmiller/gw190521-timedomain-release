@@ -5,6 +5,9 @@ import scipy.signal
 import os
 os.environ["LAL_DATA_PATH"] = os.path.join(os.environ['HOME'], 'lalsuite-extra/data/lalsimulation')
 import sys
+import scipy.signal as sig
+from gwpy.timeseries import TimeSeries
+from gwpy.signal import filter_design
 
 # utilities from https://git.ligo.org/waveforms/reviews/nrsur7dq4/blob/master/utils.py
 # and from Carl
@@ -117,38 +120,6 @@ def generate_lal_waveform(*args, **kwargs):
                                       1j*window*hcross.data.data[waveStartIndex:waveStartIndex+bufWaveLength]
     return h_td
 
-def project_fd(hp_fd, hc_fd, frequencies, Fp=None, Fc=None, time_delay=None, ifo=None):
-    
-    if ifo is not None:
-        geo_gps_time = lal.LIGOTimeGPS(triggertime_geo)
-        gmst = lal.GreenwichMeanSiderealTime(geo_gps_time)
-
-        detector = lal.cached_detector_by_prefix[ifo]
-        # get antenna patterns
-        Fp, Fc = lal.ComputeDetAMResponse(detector.response, p['ra'], p['dec'], p['psi'], gmst)
-        # get time delay and align waveform
-        # assume reference time corresponds to envelope peak
-        time_delay = lal.TimeDelayFromEarthCenter(detector.location,  p['ra'], p['dec'], geo_gps_time)
-    
-    fancy_timedelay = lal.LIGOTimeGPS(time_delay)
-    timeshift = fancy_timedelay.gpsSeconds + 1e-9*fancy_timedelay.gpsNanoSeconds
-    
-    timeshift_vector = np.exp(-2.*1j*np.pi*timeshift*frequencies)
-    
-    h_fd = (Fp*hp_fd + Fc*hc_fd)*timeshift_vector
-    return h_fd
-
-def project_td(h_td, times, **kwargs):
-    hp_td = h_td.real
-    hc_td = -h_td.imag
-    
-    fft_norm = times[1] - times[0]
-    hp_fd = np.fft.rfft(hp_td) * fft_norm
-    hc_fd = np.fft.rfft(hc_td) * fft_norm
-    frequencies = np.fft.rfftfreq(len(times)) / fft_norm
-
-    h_fd = project_fd(hp_fd, hc_fd, frequencies, **kwargs)
-    return np.fft.irfft(h_fd) / fft_norm
 
 def get_peak_times(*args, **kwargs):
     p = kwargs.pop('parameters')
@@ -203,55 +174,16 @@ def get_peak_times(*args, **kwargs):
         tp_dict[ifo] = tp_geo + timedelay
     return tp_dict
 
-def get_fd_waveforms(*args, **kwargs):
-    p = kwargs.pop('parameters')
-    times = kwargs.pop('times')
-    ifos = kwargs.pop('ifos', ['H1', 'L1', 'V1'])
-    approx = kwargs.pop('approx', 'NRSur7dq4')
-    
-    delta_t = times[1] - times[0]
-    tlen = len(times)
-    
-    fp = {k: kwargs[k] if k in kwargs else p[k] for k in ['f_ref', 'flow', 'lal_amporder']}
 
-    chi1, chi2, iota = change_spin_convention(p['theta_jn'], p['phi_jl'], p['tilt1'], p['tilt2'],
-                                          p['phi12'], p['a1'], p['a2'], p['m1'], p['m2'],
-                                          fp['f_ref'], p['phase'])
+def bandpass(h, times, fmin, fmax):
     
-    f_start = fp['flow']*2/(fp['lal_amporder'] + 2.)
-    # get strain
-    h_td = generate_lal_waveform(approx, p['m1'], p['m2'], chi1, chi2, dist_mpc=p['dist'],
-                                  dt=delta_t, f_low=f_start, f_ref=fp['f_ref'], inclination=iota,
-                                  phi_ref=p['phase'], ell_max=None, times=times, triggertime=p['time'])
-    # FFT
-    hp_td = h_td.real
-    hc_td = -h_td.imag
-
-    fft_norm = delta_t
-    hp_fd = np.fft.rfft(hp_td) * fft_norm
-    hc_fd = np.fft.rfft(hc_td) * fft_norm
-    frequencies = np.fft.rfftfreq(tlen) / fft_norm
+    # turn into gwpy TimeSeries object so we can use the built in filtering functions
+    h_timeseries = TimeSeries(h, t0=times[0], dt=times[1]-times[0])
     
-    # get peak time
-    tp_geo_loc = np.argmax(np.abs(h_td))
-    tp_geo = times[tp_geo_loc]
+    # design the bandpass filter we want
+    bp_filter = filter_design.bandpass(fmin, fmax, h_timeseries.sample_rate)
     
-    geo_gps_time = lal.LIGOTimeGPS(p['time'])
-    gmst = lal.GreenwichMeanSiderealTime(geo_gps_time)
-
-    h_fd_dict = {}
-    for ifo in ifos:
-        detector = lal.cached_detector_by_prefix[ifo]
-        # get antenna patterns
-        Fp, Fc = lal.ComputeDetAMResponse(detector.response, p['ra'], p['dec'], p['psi'], gmst)
-        # get time delay and align waveform
-        # assume reference time corresponds to envelope peak
-        timedelay = lal.TimeDelayFromEarthCenter(detector.location,  p['ra'], p['dec'], geo_gps_time)
-
-        fancy_timedelay = lal.LIGOTimeGPS(timedelay)
-        timeshift = fancy_timedelay.gpsSeconds + 1e-9*fancy_timedelay.gpsNanoSeconds
-
-        timeshift_vector = np.exp(-2.*1j*np.pi*timeshift*frequencies)
-        h_fd_dict[ifo] = (Fp*hp_fd + Fc*hc_fd)*timeshift_vector
+    # filter the timeseries
+    h_bp = h_timeseries.filter(bp_filter, filtfilt=True)
     
-    return h_fd_dict
+    return h_bp
