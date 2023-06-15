@@ -97,7 +97,7 @@ for ifo, I0 in i0_dict.items():
     
 path_template = data_dir+'{0}_gw190521_{1}_NRSur7dq4_dec8_flow11_fref11_{2}_TstartTend.dat'
 
-date = '042823'
+date = '061323'
 runs = ['insp', 'rd']
 tcutoffs = ['m50M', 'm40M', 'm37.5M', 'm35M', 'm32.5M', 'm30M', 'm27.5M', 'm25M', 'm22.5M', 'm20M', 
                 'm17.5M', 'm15M', 'm12.5M', 'm10M', 'm7.5M', 'm5M', 'm2.5M', '0M', '2.5M', '5M', '7.5M', 
@@ -195,4 +195,4 @@ for k, samples in td_samples.items():
     reconstructions[k] = {'wh':whitened, 'h':unwhitened, 'bp':bandpassed, 'params':samples[indices]}
     
     # Save results as we go
-    np.save(data_dir+f'waveform_reconstructions_L1.npy', reconstructions, allow_pickle=True)
+    np.save(data_dir+'waveform_reconstructions_L1.npy', reconstructions, allow_pickle=True)

@@ -3,7 +3,7 @@
 import numpy as np
 from scipy.stats import gaussian_kde
 
-def load_posterior_samples(pe_output_dir, tcutoffs, verbose=False): 
+def load_posterior_samples(pe_output_dir, date, tcutoffs, verbose=False): 
     
     path_template = pe_output_dir+'{0}_gw190521_{1}_NRSur7dq4_dec8_flow11_fref11_{2}_TstartTend.dat'
 
@@ -14,10 +14,10 @@ def load_posterior_samples(pe_output_dir, tcutoffs, verbose=False):
     for run in runs: 
         for tcut in tcutoffs: 
             key = f'{run} {tcut}'
-            paths[key] = path_template.format('042823',run,tcut)
+            paths[key] = path_template.format(date,run,tcut)
 
     # samples from full duration (no time cut) 
-    paths['full'] = path_template.format('050323','full','0M')
+    paths['full'] = path_template.format('050323','full','0M') # TODO update with date
 
     # prior samples
     paths['prior'] = pe_output_dir+'gw190521_sample_prior.dat'

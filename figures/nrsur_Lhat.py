@@ -113,10 +113,7 @@ for key in reconstruction_dict.keys():
         dyn_times_list.append(dyn_times)
     
     # Add to dict
-    angles_vs_time_dict[key] = {'incl_vs_time':incl_vs_t_list, 'time_M':dyn_times}
-
+    angles_vs_time_dict[key] = {'incl_vs_time':incl_vs_t_list, 'time_M':dyn_times_list}
         
-P.plot(dyn_times, incl_vs_t, alpha=0.1)   
-P.xlabel('t [M]')
-P.ylabel('incl(t)')
-P.show()
+    # Save results as we go
+    np.save(data_dir+'angles_vs_time_dict.npy', angles_vs_time_dict, allow_pickle=True)

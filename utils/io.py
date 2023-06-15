@@ -12,6 +12,7 @@ def load_raw_data(path='../data/{}-{}_GWOSC_16KHZ_R2-1242442952-32.hdf5',
     raw_data_dict = {}
     
     for ifo in ifos:
+        # for real data downloaded from gwosc...
         with h5py.File(path.format(ifo[0], ifo), 'r') as f:
             strain = array(f['strain/Strain'])
             T0 = f['meta/GPSstart'][()]

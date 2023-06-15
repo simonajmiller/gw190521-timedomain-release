@@ -111,7 +111,6 @@ def samp_to_phys_angles(x, **kwargs):
             iota, chi1x, chi1y, chi1z, chi2x, chi2y, chi2z, m1, m2,
             kwargs['fmin'], phi_ref
         ))
-        
     # quantities to return
     theta_jn, phi_jl, tilt1, tilt2, phi12, chi1, chi2 = np.array(ys, ndmin=2).T
     mtot, q, _, _, _, _, _, _, dist_mpc, phi_ref, iota, ra, dec, psi, tgps_geocent = np.array(x_phys.T)
@@ -223,7 +222,7 @@ Posterior function
 def get_lnprob(x, fmin=25, return_wf=False, return_params=False, 
                only_prior=False, approx='NRSur7dq4',
                rho_dict=None, time_dict=None, delta_t=None, data_dict=None,
-               ap_dict=None, t0_dict=None, tpeak_dict=None, **kwargs):
+               ap_dict=None, tpeak_dict=None, **kwargs):
     
     # get physical parameters
     x_phys = samp_to_phys(x, **kwargs)
@@ -262,10 +261,10 @@ def get_lnprob(x, fmin=25, return_wf=False, return_params=False,
         else: # neither
             TP_dict = tpeak_dict.copy()
             AP_dict = ap_dict.copy()
-        
+                
         # Cycle through ifos
         for ifo, data in data_dict.items():
-            
+                        
             # Antenna patterns and tpeak 
             Fp, Fc = AP_dict[ifo]
             tt = TP_dict[ifo] # triggertime = peak time, NOT t0 (cutoff time)
@@ -274,6 +273,7 @@ def get_lnprob(x, fmin=25, return_wf=False, return_params=False,
             h = rwf.generate_lal_waveform(hplus=hp, hcross=hc,
                                           times=time_dict[ifo], 
                                           triggertime=tt) 
+            
             # Project onto detector
             h_ifo = Fp*h.real - Fc*h.imag
 
@@ -285,7 +285,6 @@ def get_lnprob(x, fmin=25, return_wf=False, return_params=False,
             r = data - h_ifo
 
             # "Over whiten" residuals
-            #r = np.linalg.solve(L_dict[ifo], r)
             rwt = solve_toeplitz(rho_dict[ifo], r)
 
             # cCmpute log likelihood for ifo
