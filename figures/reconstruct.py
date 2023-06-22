@@ -96,21 +96,20 @@ for ifo, I0 in i0_dict.items():
 # Load posterior samples   
     
 path_template = data_dir+'{0}_gw190521_{1}_NRSur7dq4_dec8_flow11_fref11_{2}_TstartTend.dat'
+paths = {}
 
 date = '061323'
-runs = ['insp', 'rd']
-tcutoffs = ['m50M', 'm40M', 'm37.5M', 'm35M', 'm32.5M', 'm30M', 'm27.5M', 'm25M', 'm22.5M', 'm20M', 
-                'm17.5M', 'm15M', 'm12.5M', 'm10M', 'm7.5M', 'm5M', 'm2.5M', '0M', '2.5M', '5M', '7.5M', 
-                '10M', '12.5M', '15M', '17.5M', '20M', '30M', '40M', '50M']
-
-paths = {}
-for run in runs: 
-    for tcut in tcutoffs: 
-        key = f'{run} {tcut}'
-        paths[key] = path_template.format(date,run,tcut)
+# runs = ['insp', 'rd']
+# tcutoffs = ['m50M', 'm40M', 'm37.5M', 'm35M', 'm32.5M', 'm30M', 'm27.5M', 'm25M', 'm22.5M', 'm20M', 
+#                 'm17.5M', 'm15M', 'm12.5M', 'm10M', 'm7.5M', 'm5M', 'm2.5M', '0M', '2.5M', '5M', '7.5M', 
+#                 '10M', '12.5M', '15M', '17.5M', '20M', '30M', '40M', '50M']
+# for run in runs: 
+#     for tcut in tcutoffs: 
+#         key = f'{run} {tcut}'
+#         paths[key] = path_template.format(date,run,tcut)
         
-paths['prior'] = data_dir+'gw190521_sample_prior.dat'
-paths['full'] = data_dir+path_template.format('050323','full','0M')
+# paths['prior'] = data_dir+'gw190521_sample_prior.dat'
+paths['full'] = path_template.format('061223','full','0M')
 
 print('\nLoading PE samples ... ')
 
@@ -119,17 +118,26 @@ for k, p in paths.items():
     try:
         td_samples[k] = np.genfromtxt(p, names=True, dtype=float)
     except:
-        pass
+        print(f'cannot find {p}')
         
         
 # ----------------------------------------------------------------------------
 # Generate reconstructions from posteriors
 
+
 fref = 11
 ifo = 'L1'
 
-reconstructions = {}
-reconstructions['time samples'] = time_dict[ifo]
+# where to save: 
+savepath = data_dir+"waveform_reconstructions_L1.npy"
+
+# load in existing if we want 
+reload = True
+if os.path.exists(savepath) and reload:
+    reconstructions = np.load(savepath,allow_pickle=True).item()
+else:
+    reconstructions = {}
+    reconstructions['time samples'] = time_dict[ifo]
 
 print('\nGenerating reconstructions ... ')
 
@@ -195,4 +203,4 @@ for k, samples in td_samples.items():
     reconstructions[k] = {'wh':whitened, 'h':unwhitened, 'bp':bandpassed, 'params':samples[indices]}
     
     # Save results as we go
-    np.save(data_dir+'waveform_reconstructions_L1.npy', reconstructions, allow_pickle=True)
+    np.save(savepath, reconstructions, allow_pickle=True)

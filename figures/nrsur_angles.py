@@ -24,6 +24,8 @@ from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions
 from lalsimulation.nrfits.NRSur7dq4Remnant import NRSur7dq4Remnant
 from gwtools import rotations   # pip install gwtools
 
+def get_unit_vector(v): 
+    return v/np.sum(v * v, axis=1)
 
 # Define surrogate
 sur = NRSur7dq4Remnant()
@@ -38,12 +40,23 @@ data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data_simonas_la
 reconstruction_dict = np.load(data_dir+"waveform_reconstructions_L1.npy",allow_pickle=True).item()
 reconstruction_dict.pop('time samples')
 
-# Dict in which to store angles vs. time data
-angles_vs_time_dict = {}
+# where to save: 
+savepath = data_dir+'angles_vs_time_dict.npy'
 
-# Cycle through all the runs
-for key in reconstruction_dict.keys():
-   
+# load in existing if we want 
+reload = True
+if os.path.exists(savepath) and reload:
+    # Dict in which to store angles vs. time data
+    angles_vs_time_dict = np.load(savepath,allow_pickle=True).item()
+else:
+    angles_vs_time_dict = {}
+
+# Cycle through the runs
+#keys_to_calculate = [key for key in reconstruction_dict.keys() if key not in angles_vs_time_dict.keys()]
+keys_to_calculate = ['full']
+
+for key in keys_to_calculate:
+       
     # To track progress
     print(key)
             
@@ -84,7 +97,7 @@ for key in reconstruction_dict.keys():
 
         # Get surrogate dynamics
         q_sur = 1.0/q
-        chiA0 = [s1x, s1y, s1z]
+        chiA0 = [s1x, s1y, s1z] # A subscript in NR <-> 1 subscript in LIGO
         chiB0 = [s2x, s2y, s2z]
         dyn_times, quat_sur, orbphase_sur, chiA_copr_sur, chiB_copr_sur \
             = sur_dyn(q_sur, chiA0, chiB0, [1,0,0,0], 0, omega_ref, False)
@@ -92,6 +105,16 @@ for key in reconstruction_dict.keys():
         # Direction of the orbital angular momentum, defined with respect to the
         # source frame at f_ref
         Lhat = rotations.lHat_from_quat(quat_sur).T
+        
+        # Get total angular momentum vector
+        chiA = ???                  # dimensionless spins over time
+        chiB = ??? 
+        S_1 = chiA * m1**2          # magnitude of spins over time
+        S_2 = chiB * m2**2
+        Lmag = ???                  # magnitude of orbital angular momentum
+        L = Lmag * Lhat
+        J = L + S_1 + S_2           # add it all up 
+        Jhat = get_unit_vector(J)
 
         # This is the phi that goes into the Ylms, and phi_ref is defined
         # like this by silly LIGO.
@@ -103,17 +126,44 @@ for key in reconstruction_dict.keys():
                           np.sin(incl)*np.sin(phi), \
                           np.cos(incl)]).T
 
-
         # Take inner product of the two unit vector and arccos it to get
         # inclination as a function of time.
         incl_vs_t = np.arccos(np.sum(Lhat * Nhat, axis=1))
-                
+        
+        # Get angles between J and L as function of time
+        thetajl_vs_t = np.arccos(np.sum(Lhat * Jhat, axis=1))
+        phijl_vs_t = ???
+        
+        # Get angles between J and spin vectors as a function of time
+        S1_hat = get_unit_vector(S_1)
+        theta_J_chi1_vs_t = np.arccos(np.sum(S1_hat * Jhat, axis=1))
+        phi_J_chi1_vs_t = ???
+        
+        S2_hat = get_unit_vector(S_2)
+        theta_J_chi2_vs_t = np.arccos(np.sum(S2_hat * Jhat, axis=1))
+        phi_J_chi2_vs_t = ???
+
         # Add to ongoing lists 
-        incl_vs_t_list.append(incl_vs_t)
         dyn_times_list.append(dyn_times)
+        incl_vs_t_list.append(incl_vs_t)
+        thetajl_vs_t_list.append(thetajl_vs_t)
+        phijl_vs_t_list.append(phijl_vs_t)
+        theta_J_chi1_vs_t_list.append(theta_J_chi1_vs_t)
+        phi_J_chi1_vs_t_list.append(phi_J_chi1_vs_t)
+        theta_J_chi2_vs_t_list.append(theta_J_chi2_vs_t)
+        phi_J_chi2_vs_t_list.append(phi_J_chi2_vs_t)
     
     # Add to dict
-    angles_vs_time_dict[key] = {'incl_vs_time':incl_vs_t_list, 'time_M':dyn_times_list}
+    angles_vs_time_dict[key] = {
+        'time_M':dyn_times_list,
+        'incl':incl_vs_t_list, 
+        'theta_JL':thetajl_vs_t_list, 
+        'phi_JL':phijl_vs_t_list,
+        'theta_Jchi1':theta_J_chi1_vs_t_list,
+        'phi_Jchi1':phi_J_chi1_vs_t_list,
+        'theta_Jchi2':theta_J_chi2_vs_t_list,
+        'phi_Jchi2':phi_J_chi2_vs_t_list
+    }
         
     # Save results as we go
-    np.save(data_dir+'angles_vs_time_dict.npy', angles_vs_time_dict, allow_pickle=True)
+    np.save(savepath, angles_vs_time_dict, allow_pickle=True)
