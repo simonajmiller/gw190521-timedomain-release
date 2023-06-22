@@ -1,12 +1,12 @@
 #############################################################################
 ##
-##      Filename: nrsur_Lhat.py
+##      Filename: nrsur_angles.py
 ##
 ##      Author: Vijay Varma, Simona Miller
 ##
-##      Created: 21-05-2023, edited 12-06-23
+##      Created: 21-05-2023, most recent edits: 21-06-23
 ##
-##      Description: plot inclination angle as a function of time
+##      Description: plot angles between L, S, and J as a function of time
 ##
 #############################################################################
 
