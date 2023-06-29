@@ -3,6 +3,13 @@ from scipy.optimize import minimize
 #import celerite
 #from celerite import terms
 
+def magnitude(v): 
+    return np.sqrt(np.sum(v * v))
+
+def unit_vector(v): 
+    return v/magnitude(v)
+
+
 def m1m2_from_mtotq(mtot, q):
     m1 = mtot / (1 + q)
     m2 = mtot - m1

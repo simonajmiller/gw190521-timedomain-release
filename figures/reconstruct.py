@@ -2,6 +2,7 @@ import os
 os.environ["LAL_DATA_PATH"] = os.path.join(os.environ['HOME'], 'lalsuite-extra/data/lalsimulation')
 
 import numpy as np
+import argparse
 import h5py
 import lal
 import scipy.linalg as sl
@@ -17,12 +18,25 @@ from utils import reconstructwf as rwf
 from tqdm import tqdm
 import lalsimulation as lalsim
 
+
+# parse args 
+p = argparse.ArgumentParser()
+p.add_argument('--vary-time', action='store_true')
+p.add_argument('--vary-skypos', action='store_true')
+p.add_argument('--reload', action='store_true')
+args = p.parse_args()
+
+reload = args.reload
+varyT = args.vary_time 
+varySkyPos = args.vary_skypos
+
 #  Path where all data is stored: 
 data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data_simonas_laptop/' 
                  
 
 # ----------------------------------------------------------------------------
 # Load strain data
+
 ifos = ['L1']
 data_path = data_dir+'GW190521_data/{}-{}_GWOSC_16KHZ_R2-1242442952-32.hdf5' ## TODO-update with final file paths 
 raw_time_dict, raw_data_dict = utils.load_raw_data(ifos=ifos,path=data_path)
@@ -36,11 +50,11 @@ t0_geocent = 1242442967.405764
 tstart = 1242442966.9077148
 tend = 1242442967.607715
 
-ra = 6.07546535866838
-dec = -0.8000357325337637
-psi = 2.443070879119043
+ra_0 = 6.07546535866838
+dec_0 = -0.8000357325337637
+psi_0 = 2.443070879119043
 
-t0_dict, ap_dict = utils.get_tgps_and_ap_dicts(t0_geocent, ifos, ra, dec, psi)
+t0_dict, ap_0_dict = utils.get_tgps_and_ap_dicts(t0_geocent, ifos, ra_0, dec_0, psi_0)
 
 cond_psds = {}
 for ifo, freq_psd in pe_psds.items():
@@ -92,24 +106,37 @@ for ifo, I0 in i0_dict.items():
     time_dict[ifo] = time_dict[ifo][I0-Npre:I0+Npost]
     data_dict[ifo] = data_dict[ifo][I0-Npre:I0+Npost]
     
+    
 # ----------------------------------------------------------------------------
 # Load posterior samples   
+
+pathname = '{0}_gw190521_{1}_NRSur7dq4_dec8_flow11_fref11_{2}_TstartTend'
+path_template = data_dir + pathname + '.dat'
+
+if varyT and varySkyPos: 
+    path_template = path_template.replace('.dat','_VaryTAndSkyPos.dat')
+    date = '062323'
+elif varyT: 
+    path_template = path_template.replace('.dat','_VaryT_FixedSkyPos.dat')
+    date = '062823'
+# elif varySkyPos: 
+#     path_template = path_template.replace('.dat','_FixedT_VarySkyPos.dat')
+else: 
+    date = '061323'
     
-path_template = data_dir+'{0}_gw190521_{1}_NRSur7dq4_dec8_flow11_fref11_{2}_TstartTend.dat'
 paths = {}
 
-date = '061323'
-# runs = ['insp', 'rd']
-# tcutoffs = ['m50M', 'm40M', 'm37.5M', 'm35M', 'm32.5M', 'm30M', 'm27.5M', 'm25M', 'm22.5M', 'm20M', 
-#                 'm17.5M', 'm15M', 'm12.5M', 'm10M', 'm7.5M', 'm5M', 'm2.5M', '0M', '2.5M', '5M', '7.5M', 
-#                 '10M', '12.5M', '15M', '17.5M', '20M', '30M', '40M', '50M']
-# for run in runs: 
-#     for tcut in tcutoffs: 
-#         key = f'{run} {tcut}'
-#         paths[key] = path_template.format(date,run,tcut)
+runs = ['insp', 'rd']
+tcutoffs = ['m50M', 'm40M', 'm37.5M', 'm35M', 'm32.5M', 'm30M', 'm27.5M', 'm25M', 'm22.5M', 'm20M', 
+                'm17.5M', 'm15M', 'm12.5M', 'm10M', 'm7.5M', 'm5M', 'm2.5M', '0M', '2.5M', '5M', '7.5M', 
+                '10M', '12.5M', '15M', '17.5M', '20M', '30M', '40M', '50M']
+for run in runs: 
+    for tcut in tcutoffs: 
+        key = f'{run} {tcut}'
+        paths[key] = path_template.format(date,run,tcut)
         
-# paths['prior'] = data_dir+'gw190521_sample_prior.dat'
-paths['full'] = path_template.format('061223','full','0M')
+paths['full'] = path_template.format(date, 'full','0M')
+paths['prior'] = data_dir+'prior_vary_time_and_skypos.dat'
 
 print('\nLoading PE samples ... ')
 
@@ -124,26 +151,28 @@ for k, p in paths.items():
 # ----------------------------------------------------------------------------
 # Generate reconstructions from posteriors
 
-
 fref = 11
 ifo = 'L1'
 
 # where to save: 
-savepath = data_dir+"waveform_reconstructions_L1.npy"
+savename = "waveform_reconstructions_L1"
+savepath = path_template.replace(pathname, savename).replace('.dat', '.npy')
 
 # load in existing if we want 
-reload = True
 if os.path.exists(savepath) and reload:
     reconstructions = np.load(savepath,allow_pickle=True).item()
+    keys_to_calculate = [key for key in td_samples.keys() if key not in reconstructions.keys()]
 else:
     reconstructions = {}
     reconstructions['time samples'] = time_dict[ifo]
+    keys_to_calculate = td_samples.keys()
 
 print('\nGenerating reconstructions ... ')
 
-for k, samples in td_samples.items(): 
+for k in keys_to_calculate:
             
     print(k)
+    samples = td_samples[k]
 
     indices = np.random.choice(range(len(samples)), 1000)
 
@@ -153,6 +182,7 @@ for k, samples in td_samples.items():
 
     for j in indices:
 
+        # Unpack parameters
         m1, m2 = utils.m1m2_from_mtotq(samples['mtotal'][j], samples['q'][j])
         m1_SI = m1*lal.MSUN_SI
         m2_SI = m2*lal.MSUN_SI
@@ -165,10 +195,25 @@ for k, samples in td_samples.items():
         phi_jl = samples['phi_jl'][j]
         dist_mpc = samples['dist'][j]
         phi_ref = samples['phase'][j]
-
+        
+        # Translate spin convention
         iota, s1x, s1y, s1z, s2x, s2y, s2z = lalsim.SimInspiralTransformPrecessingNewInitialConditions(
             theta_jn, phi_jl, tilt1, tilt2, phi12, chi1, chi2, m1_SI, m2_SI, fref, phi_ref
         )
+        
+        # Get time and skyposition 
+        if varySkyPos or varyT:
+            
+            ra = samples['ra'][j] if varySkyPos else ra_0
+            dec = samples['dec'][j] if varySkyPos else dec_0
+            psi = samples['psi'][j] if varySkyPos else psi_0
+            tt_geocent = samples['tgps_geocent'][j] if varyT else t0_geocent
+
+            tt_dict, ap_dict = utils.get_tgps_and_ap_dicts(tt_geocent, ifos, ra, dec, psi, verbose=False)
+        
+        else: 
+            tt_dict = tpeak_dict.copy()
+            ap_dict = ap_0_dict.copy()
 
         # Get strain
         hp, hc = rwf.generate_lal_hphc('NRSur7dq4', m1, m2, 
@@ -178,10 +223,10 @@ for k, samples in td_samples.items():
                                        inclination=iota,
                                        phi_ref=phi_ref, ell_max=None)
        
-        # Project
+        # Time align
         h = rwf.generate_lal_waveform(hplus=hp, hcross=hc,
                                       times=time_dict[ifo], 
-                                      triggertime=tpeak_dict[ifo])
+                                      triggertime=tt_dict[ifo])
 
         # Whiten 
         w_h = np.linalg.solve(L_dict[ifo], h)

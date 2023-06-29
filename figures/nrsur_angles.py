@@ -18,33 +18,51 @@ import os
 os.environ["LAL_DATA_PATH"] = os.path.join(os.environ['HOME'], 'lalsuite-extra/data/lalsimulation')
 
 import numpy as np
+import argparse
 import matplotlib.pyplot as P
 import lal
 from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions
 from lalsimulation.nrfits.NRSur7dq4Remnant import NRSur7dq4Remnant
 from gwtools import rotations   # pip install gwtools
 
-def get_unit_vector(v): 
-    return v/np.sum(v * v, axis=1)
+# parse args 
+p = argparse.ArgumentParser()
+p.add_argument('--vary-time', action='store_true')
+p.add_argument('--vary-skypos', action='store_true')
+p.add_argument('--reload', action='store_true')
+args = p.parse_args()
+
+reload = args.reload
+varyT = args.vary_time 
+varySkyPos = args.vary_skypos
+
+#  Path where all data is stored
+data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data_simonas_laptop/' 
+
 
 # Define surrogate
 sur = NRSur7dq4Remnant()
 sur_dyn = sur._get_surrogate_dynamics
 
-f_ref = 25      # You may want to use -1, but with Vijay's lalsuite branch
+f_ref = 11      # You may want to use -1, but with Vijay's lalsuite branch
 
-#  Path where all data is stored
-data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data_simonas_laptop/' 
 
 # Load waveform reconstructions and their parameters 
-reconstruction_dict = np.load(data_dir+"waveform_reconstructions_L1.npy",allow_pickle=True).item()
+reconstruction_fname = "waveform_reconstructions_L1.npy"
+if varyT and varySkyPos: 
+    reconstruction_fname = reconstruction_fname.replace('.npy','_VaryTAndSkyPos.npy')
+elif varyT: 
+    reconstruction_fname = reconstruction_fname.replace('.npy','_VaryT_FixedSkyPos.npy')
+elif varySkyPos: 
+    reconstruction_fname = reconstruction_fname.replace('.npy','_FixedT_VarySkyPos.npy')
+
+reconstruction_dict = np.load(data_dir+reconstruction_fname,allow_pickle=True).item()
 reconstruction_dict.pop('time samples')
 
 # where to save: 
-savepath = data_dir+'angles_vs_time_dict.npy'
+savepath = data_dir+reconstruction_fname.replace('waveform_reconstructions_L1', 'angles_vs_time_dict')
 
 # load in existing if we want 
-reload = True
 if os.path.exists(savepath) and reload:
     # Dict in which to store angles vs. time data
     angles_vs_time_dict = np.load(savepath,allow_pickle=True).item()
@@ -52,8 +70,7 @@ else:
     angles_vs_time_dict = {}
 
 # Cycle through the runs
-#keys_to_calculate = [key for key in reconstruction_dict.keys() if key not in angles_vs_time_dict.keys()]
-keys_to_calculate = ['full']
+keys_to_calculate = [key for key in reconstruction_dict.keys() if key not in angles_vs_time_dict.keys()]
 
 for key in keys_to_calculate:
        
@@ -63,8 +80,10 @@ for key in keys_to_calculate:
     # Fetch posterior_samples 
     samples = reconstruction_dict[key]['params']
     
-    # To store incl versus time
+    # To store angles versus time
     incl_vs_t_list = []
+    thetajl_vs_t_list = []
+    phijl_vs_t_list = []
     dyn_times_list = []
     
     # Cycle through samples 
@@ -73,6 +92,7 @@ for key in keys_to_calculate:
         M = samp['mtotal'] # Detector frame total mass
         q = samp['q']
         m1, m2 = utils.m1m2_from_mtotq(M, q)
+        eta=m1*m2/(m1+m2)/(m1+m2) # symmetric mass ratio
         m1_SI = m1*lal.MSUN_SI # convert to kg
         m2_SI = m2*lal.MSUN_SI
         chi1 = samp['chi1']
@@ -105,16 +125,21 @@ for key in keys_to_calculate:
         # Direction of the orbital angular momentum, defined with respect to the
         # source frame at f_ref
         Lhat = rotations.lHat_from_quat(quat_sur).T
+                
+        # Get spin angular momentum vector at ref req with proper units
+        S_A0 = np.asarray(chiA0) * m1 * m1   
+        S_B0 = np.asarray(chiB0) * m2 * m2 
+        S_0 = S_A0 + S_B0
         
-        # Get total angular momentum vector
-        chiA = ???                  # dimensionless spins over time
-        chiB = ??? 
-        S_1 = chiA * m1**2          # magnitude of spins over time
-        S_2 = chiB * m2**2
-        Lmag = ???                  # magnitude of orbital angular momentum
+        # Get orbital angular momentum vector with proper units (in PN limit)
+        v0 = np.cbrt(  M * lal.MTSUN_SI * np.pi * f_ref )
+        Lmag = (M*M*eta / v0)*(1.0 + v0*v0*(1.5 + eta/6.)) # 2PN expansion
         L = Lmag * Lhat
-        J = L + S_1 + S_2           # add it all up 
-        Jhat = get_unit_vector(J)
+        
+        # Add it all up to get total angular momentum at ref freq 
+        # (in PN limit, it is constant in time so we don't need to time evolve)
+        J = L[0] + S_0      
+        Jhat = utils.unit_vector(J) # unit vector
 
         # This is the phi that goes into the Ylms, and phi_ref is defined
         # like this by silly LIGO.
@@ -130,28 +155,20 @@ for key in keys_to_calculate:
         # inclination as a function of time.
         incl_vs_t = np.arccos(np.sum(Lhat * Nhat, axis=1))
         
+        # Just xy components
+        Lhat_xy = np.asarray([utils.unit_vector(Lhat[i,:-1]) for i in range(Lhat.shape[0])])
+        Jhat_xy = utils.unit_vector(Jhat[:-1])
+
         # Get angles between J and L as function of time
         thetajl_vs_t = np.arccos(np.sum(Lhat * Jhat, axis=1))
-        phijl_vs_t = ???
+        phijl_vs_t = np.arccos(np.sum(Lhat_xy * Jhat_xy, axis=1))
         
-        # Get angles between J and spin vectors as a function of time
-        S1_hat = get_unit_vector(S_1)
-        theta_J_chi1_vs_t = np.arccos(np.sum(S1_hat * Jhat, axis=1))
-        phi_J_chi1_vs_t = ???
-        
-        S2_hat = get_unit_vector(S_2)
-        theta_J_chi2_vs_t = np.arccos(np.sum(S2_hat * Jhat, axis=1))
-        phi_J_chi2_vs_t = ???
-
         # Add to ongoing lists 
         dyn_times_list.append(dyn_times)
         incl_vs_t_list.append(incl_vs_t)
         thetajl_vs_t_list.append(thetajl_vs_t)
         phijl_vs_t_list.append(phijl_vs_t)
-        theta_J_chi1_vs_t_list.append(theta_J_chi1_vs_t)
-        phi_J_chi1_vs_t_list.append(phi_J_chi1_vs_t)
-        theta_J_chi2_vs_t_list.append(theta_J_chi2_vs_t)
-        phi_J_chi2_vs_t_list.append(phi_J_chi2_vs_t)
+
     
     # Add to dict
     angles_vs_time_dict[key] = {
@@ -159,10 +176,6 @@ for key in keys_to_calculate:
         'incl':incl_vs_t_list, 
         'theta_JL':thetajl_vs_t_list, 
         'phi_JL':phijl_vs_t_list,
-        'theta_Jchi1':theta_J_chi1_vs_t_list,
-        'phi_Jchi1':phi_J_chi1_vs_t_list,
-        'theta_Jchi2':theta_J_chi2_vs_t_list,
-        'phi_Jchi2':phi_J_chi2_vs_t_list
     }
         
     # Save results as we go
