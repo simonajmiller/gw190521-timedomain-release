@@ -17,10 +17,10 @@ def load_posterior_samples(pe_output_dir, date, tcutoffs, verbose=False):
             paths[key] = path_template.format(date,run,tcut)
 
     # samples from full duration (no time cut) 
-    paths['full'] = path_template.format('050323','full','0M') # TODO update with date
+    paths['full'] = path_template.format(date,'full','0M') 
 
     # prior samples
-    paths['prior'] = pe_output_dir+'gw190521_sample_prior.dat'
+    paths['prior'] = pe_output_dir+'prior_vary_time_and_skypos.dat'
 
     td_samples = {}
     for k, p in paths.items():
@@ -53,13 +53,13 @@ def chi_precessing(m1, a1, tilt1, m2, a2, tilt2):
 
 
 # reflected KDE
-def reflected_kde(samples, lower_bound, upper_bound, npoints=500): 
+def reflected_kde(samples, lower_bound, upper_bound, npoints=500, bw=None): 
     
     grid = np.linspace(lower_bound, upper_bound, npoints)
     
-    kde_on_grid = gaussian_kde(samples)(grid) + \
-                  gaussian_kde(2*lower_bound-samples)(grid) + \
-                  gaussian_kde(2*upper_bound-samples)(grid) 
+    kde_on_grid = gaussian_kde(samples, bw_method=bw)(grid) + \
+                  gaussian_kde(2*lower_bound-samples, bw_method=bw)(grid) + \
+                  gaussian_kde(2*upper_bound-samples, bw_method=bw)(grid) 
     
     return grid, kde_on_grid
     

@@ -122,7 +122,7 @@ elif varyT:
 # elif varySkyPos: 
 #     path_template = path_template.replace('.dat','_FixedT_VarySkyPos.dat')
 else: 
-    date = '061323'
+    date = '063023'
     
 paths = {}
 
