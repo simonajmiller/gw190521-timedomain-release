@@ -52,6 +52,12 @@ def chi_precessing(m1, a1, tilt1, m2, a2, tilt2):
     return chi_p
 
 
+# Function to calculate chi_eff 
+def chi_effective(m1, a1, tilt1, m2, a2, tilt2):
+    chieff = (m1*a1*np.cos(tilt1) + m2*a2*np.cos(tilt2))/(m1+m2)
+    return chieff
+
+
 # reflected KDE
 def reflected_kde(samples, lower_bound, upper_bound, npoints=500, bw=None): 
     

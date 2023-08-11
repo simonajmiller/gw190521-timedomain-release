@@ -136,6 +136,10 @@ for run in runs:
         paths[key] = path_template.format(date,run,tcut)
         
 paths['full'] = path_template.format(date, 'full','0M')
+paths['full 061323'] = path_template.format('061323', 'full','0M')
+paths['full 061223'] = data_dir+'061223_gw190521_full_NRSur7dq4_dec8_flow11_fref11_0M_TstartTend_FixedTAndSkypos.dat' 
+paths['full 051223'] = data_dir+'051223_gw190521_full_NRSur7dq4_dec8_flow11_fref11_0M_TstartTend_FixedTAndSkypos.dat'
+
 paths['prior'] = data_dir+'prior_vary_time_and_skypos.dat'
 
 print('\nLoading PE samples ... ')
@@ -166,15 +170,17 @@ else:
     reconstructions = {}
     reconstructions['time samples'] = time_dict[ifo]
     keys_to_calculate = td_samples.keys()
-
+    
 print('\nGenerating reconstructions ... ')
 
 for k in keys_to_calculate:
             
     print(k)
     samples = td_samples[k]
-
-    indices = np.random.choice(range(len(samples)), 1000)
+    
+    ntraces = 1000
+    #ntraces = 10000
+    indices = np.random.choice(range(len(samples)), ntraces)
 
     whitened = []
     unwhitened = []
