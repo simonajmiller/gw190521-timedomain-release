@@ -14,10 +14,12 @@ from contextlib import closing
 import sys
 sys.path.append('../')
 import utils
-from utils import reconstructwf as rwf
-from tqdm import tqdm
+from utils import reconstructwf as rwf 
 import lalsimulation as lalsim
+from scipy.linalg import solve_toeplitz
+import matplotlib.pyplot as plt
 
+from helper_functions import whitenData
 
 # parse args 
 p = argparse.ArgumentParser()
@@ -33,12 +35,12 @@ varySkyPos = args.vary_skypos
 #  Path where all data is stored: 
 data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data_simonas_laptop/' 
                  
-
+    
 # ----------------------------------------------------------------------------
 # Load strain data
 
 ifos = ['L1']
-data_path = data_dir+'GW190521_data/{}-{}_GWOSC_16KHZ_R2-1242442952-32.hdf5' ## TODO-update with final file paths 
+data_path = data_dir+'GW190521_data/{}-{}_GWOSC_16KHZ_R2-1242442952-32.hdf5'
 raw_time_dict, raw_data_dict = utils.load_raw_data(ifos=ifos,path=data_path)
 
 psd_path = data_dir+'GW190521_data/glitch_median_PSD_forLI_{}.dat'
@@ -87,24 +89,20 @@ Npre = int(round(TPre / dt))
 Npost = int(round(TPost / dt)) + 1  # must add one so that the target time is actually included, even if Tpost = 0,
                                          # otherwise WF placement gets messed up   
 Nanalyze = Npre + Npost
-Tanalyze = Nanalyze*dt
-print('Will analyze {:.3f} s of data at {:.1f} Hz'.format(Tanalyze, 1/dt))
 
-L_dict = OrderedDict()   # stores L such that cov matrix C = L^T L
-for ifo, data in data_dict.items():
-    freq, psd = cond_psds[ifo]
-    dt = 0.5 / round(freq.max())
-    rho = 0.5*np.fft.irfft(psd) / dt # dt comes from numpy fft conventions
-    
-    # compute covariance matrix  C and its Cholesky decomposition L (~sqrt of C)
-    C = sl.toeplitz(rho[:Nanalyze])
-    L_dict[ifo] = np.linalg.cholesky(C)
-        
 # Crop analysis data to specified duration.
 for ifo, I0 in i0_dict.items():
     # I0 = sample closest to desired time
     time_dict[ifo] = time_dict[ifo][I0-Npre:I0+Npost]
-    data_dict[ifo] = data_dict[ifo][I0-Npre:I0+Npost]
+    data_dict[ifo] = data_dict[ifo][I0-Npre:I0+Npost] 
+
+# Whiten detector strain data
+data_dict_wh = {ifo:whitenData(data, cond_psds[ifo][1], cond_psds[ifo][0]) for ifo, data in data_dict.items()}
+   
+# Save detector data, whitened and colored
+np.save(data_dir+'LVC_strain_data.npy', data_dict, allow_pickle=True)
+np.save(data_dir+'LVC_strain_data_whitened.npy', data_dict_wh, allow_pickle=True)
+np.save(data_dir+'LVC_time_data.npy', time_dict, allow_pickle=True)
     
     
 # ----------------------------------------------------------------------------
@@ -119,8 +117,6 @@ if varyT and varySkyPos:
 elif varyT: 
     path_template = path_template.replace('.dat','_VaryT_FixedSkyPos.dat')
     date = '062823'
-# elif varySkyPos: 
-#     path_template = path_template.replace('.dat','_FixedT_VarySkyPos.dat')
 else: 
     date = '063023'
     
@@ -136,10 +132,6 @@ for run in runs:
         paths[key] = path_template.format(date,run,tcut)
         
 paths['full'] = path_template.format(date, 'full','0M')
-paths['full 061323'] = path_template.format('061323', 'full','0M')
-paths['full 061223'] = data_dir+'061223_gw190521_full_NRSur7dq4_dec8_flow11_fref11_0M_TstartTend_FixedTAndSkypos.dat' 
-paths['full 051223'] = data_dir+'051223_gw190521_full_NRSur7dq4_dec8_flow11_fref11_0M_TstartTend_FixedTAndSkypos.dat'
-
 paths['prior'] = data_dir+'prior_vary_time_and_skypos.dat'
 
 print('\nLoading PE samples ... ')
@@ -155,12 +147,17 @@ for k, p in paths.items():
 # ----------------------------------------------------------------------------
 # Generate reconstructions from posteriors
 
+# Reference freq = 11 Hz to correspond to LVK analysis
 fref = 11
+
+# Look at LIGO Livingston data only
 ifo = 'L1'
 
 # where to save: 
 savename = "waveform_reconstructions_L1"
 savepath = path_template.replace(pathname, savename).replace('.dat', '.npy')
+
+print(f'\nWill save reconstructions at {savepath}')
 
 # load in existing if we want 
 if os.path.exists(savepath) and reload:
@@ -176,11 +173,17 @@ print('\nGenerating reconstructions ... ')
 for k in keys_to_calculate:
             
     print(k)
-    samples = td_samples[k]
     
-    ntraces = 1000
-    #ntraces = 10000
-    indices = np.random.choice(range(len(samples)), ntraces)
+    # Fetch samples
+    samples = td_samples[k]
+    nsamples = len(samples)
+    
+    # Downsample 
+    if k in ['full', 'rd m10M']: # need more samples for these runs because featured in paper plots 
+        ntraces = min(10000, nsamples)
+    else: 
+        ntraces = min(1000, nsamples)
+    indices = np.random.choice(nsamples, ntraces, replace=False)
 
     whitened = []
     unwhitened = []
@@ -225,7 +228,7 @@ for k in keys_to_calculate:
         hp, hc = rwf.generate_lal_hphc('NRSur7dq4', m1, m2, 
                                        [s1x, s1y, s1z], [s2x, s2y, s2z],
                                        dist_mpc=dist_mpc, dt=dt,
-                                       f_low=11, f_ref=fref,
+                                       f_low=fref, f_ref=fref,
                                        inclination=iota,
                                        phi_ref=phi_ref, ell_max=None)
        
@@ -234,19 +237,19 @@ for k in keys_to_calculate:
                                       times=time_dict[ifo], 
                                       triggertime=tt_dict[ifo])
 
-        # Whiten 
-        w_h = np.linalg.solve(L_dict[ifo], h)
-        
-        # Just bandpass 
-        fmin_bp, fmax_bp = 20, 500
-        h_bp = rwf.bandpass(h, time_dict[ifo], fmin_bp, fmax_bp)
-
         # Project onto detectors
         Fp, Fc = ap_dict[ifo]
         h_ifo = Fp*h.real - Fc*h.imag
-        w_h_ifo = Fp*w_h.real - Fc*w_h.imag
-        h_bp_ifo = Fp*h_bp.real - Fc*h_bp.imag
-
+        
+        # Whiten
+        freqs, psd = cond_psds[ifo]
+        w_h_ifo = whitenData(h_ifo, psd, freqs)
+        
+        # Just bandpass 
+        fmin_bp, fmax_bp = 20, 500
+        h_bp_ifo = rwf.bandpass(h_ifo, time_dict[ifo], fmin_bp, fmax_bp)
+        
+        # Add to arrays
         unwhitened.append(h_ifo)
         whitened.append(w_h_ifo)
         bandpassed.append(h_bp_ifo)

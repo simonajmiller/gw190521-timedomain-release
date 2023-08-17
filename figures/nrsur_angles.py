@@ -39,13 +39,11 @@ varySkyPos = args.vary_skypos
 #  Path where all data is stored
 data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data_simonas_laptop/' 
 
-
 # Define surrogate
 sur = NRSur7dq4Remnant()
 sur_dyn = sur._get_surrogate_dynamics
 
 f_ref = 11      # You may want to use -1, but with Vijay's lalsuite branch
-
 
 # Load waveform reconstructions and their parameters 
 reconstruction_fname = "waveform_reconstructions_L1.npy"
