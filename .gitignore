@@ -3,7 +3,7 @@ data_simonas_laptop/
 figures/for_figure_*_gif/
 .DS_Store
 figures/old/
-gifs/*.pdf
+gifs/for_gif_0*/*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
