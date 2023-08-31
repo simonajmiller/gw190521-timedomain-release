@@ -163,6 +163,10 @@ for key in keys_to_calculate:
         thetajl_vs_t = np.arccos(np.sum(Lhat * Jhat, axis=1))
         phijl_vs_t = np.arccos(np.sum(Lhat_xy * Jhat_xy, axis=1))
         
+        # Scale the dynamical times 
+        Mf = 258.3 # Msun
+        dyn_times = dyn_times * (Mf / M)  
+        
         # Add to ongoing lists 
         dyn_times_list.append(dyn_times)
         incl_vs_t_list.append(incl_vs_t)
