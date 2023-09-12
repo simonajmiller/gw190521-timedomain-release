@@ -39,7 +39,7 @@ data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data_simonas_la
 # ----------------------------------------------------------------------------
 # Load strain data
 
-ifos = ['L1']
+ifos = ['H1', 'L1', 'V1']
 data_path = data_dir+'GW190521_data/{}-{}_GWOSC_16KHZ_R2-1242442952-32.hdf5'
 raw_time_dict, raw_data_dict = utils.load_raw_data(ifos=ifos,path=data_path)
 
@@ -150,11 +150,8 @@ for k, p in paths.items():
 # Reference freq = 11 Hz to correspond to LVK analysis
 fref = 11
 
-# Look at LIGO Livingston data only
-ifo = 'L1'
-
 # where to save: 
-savename = "waveform_reconstructions_L1"
+savename = "waveform_reconstructions_all_detectors"
 savepath = path_template.replace(pathname, savename).replace('.dat', '.npy')
 
 print(f'\nWill save reconstructions at {savepath}')
@@ -165,7 +162,7 @@ if os.path.exists(savepath) and reload:
     keys_to_calculate = [key for key in td_samples.keys() if key not in reconstructions.keys()]
 else:
     reconstructions = {}
-    reconstructions['time samples'] = time_dict[ifo]
+    reconstructions['time samples'] = time_dict
     keys_to_calculate = td_samples.keys()
     
 print('\nGenerating reconstructions ... ')
@@ -184,77 +181,83 @@ for k in keys_to_calculate:
     else: 
         ntraces = min(1000, nsamples)
     indices = np.random.choice(nsamples, ntraces, replace=False)
-
-    whitened = []
-    unwhitened = []
-    bandpassed = []
-
-    for j in indices:
-
-        # Unpack parameters
-        m1, m2 = utils.m1m2_from_mtotq(samples['mtotal'][j], samples['q'][j])
-        m1_SI = m1*lal.MSUN_SI
-        m2_SI = m2*lal.MSUN_SI
-        chi1 = samples['chi1'][j]
-        chi2 = samples['chi2'][j]
-        tilt1 = samples['tilt1'][j]
-        tilt2 = samples['tilt2'][j]
-        phi12 = samples['phi12'][j]
-        theta_jn = samples['theta_jn'][j]
-        phi_jl = samples['phi_jl'][j]
-        dist_mpc = samples['dist'][j]
-        phi_ref = samples['phase'][j]
-        
-        # Translate spin convention
-        iota, s1x, s1y, s1z, s2x, s2y, s2z = lalsim.SimInspiralTransformPrecessingNewInitialConditions(
-            theta_jn, phi_jl, tilt1, tilt2, phi12, chi1, chi2, m1_SI, m2_SI, fref, phi_ref
-        )
-        
-        # Get time and skyposition 
-        if varySkyPos or varyT:
-            
-            ra = samples['ra'][j] if varySkyPos else ra_0
-            dec = samples['dec'][j] if varySkyPos else dec_0
-            psi = samples['psi'][j] if varySkyPos else psi_0
-            tt_geocent = samples['tgps_geocent'][j] if varyT else t0_geocent
-
-            tt_dict, ap_dict = utils.get_tgps_and_ap_dicts(tt_geocent, ifos, ra, dec, psi, verbose=False)
-        
-        else: 
-            tt_dict = tpeak_dict.copy()
-            ap_dict = ap_0_dict.copy()
-
-        # Get strain
-        hp, hc = rwf.generate_lal_hphc('NRSur7dq4', m1, m2, 
-                                       [s1x, s1y, s1z], [s2x, s2y, s2z],
-                                       dist_mpc=dist_mpc, dt=dt,
-                                       f_low=fref, f_ref=fref,
-                                       inclination=iota,
-                                       phi_ref=phi_ref, ell_max=None)
-       
-        # Time align
-        h = rwf.generate_lal_waveform(hplus=hp, hcross=hc,
-                                      times=time_dict[ifo], 
-                                      triggertime=tt_dict[ifo])
-
-        # Project onto detectors
-        Fp, Fc = ap_dict[ifo]
-        h_ifo = Fp*h.real - Fc*h.imag
-        
-        # Whiten
-        freqs, psd = cond_psds[ifo]
-        w_h_ifo = whitenData(h_ifo, psd, freqs)
-        
-        # Just bandpass 
-        fmin_bp, fmax_bp = 20, 500
-        h_bp_ifo = rwf.bandpass(h_ifo, time_dict[ifo], fmin_bp, fmax_bp)
-        
-        # Add to arrays
-        unwhitened.append(h_ifo)
-        whitened.append(w_h_ifo)
-        bandpassed.append(h_bp_ifo)
-
-    reconstructions[k] = {'wh':whitened, 'h':unwhitened, 'bp':bandpassed, 'params':samples[indices]}
     
+    reconstructions_run = {}
+    
+    for ifo in ifos:
+        
+        whitened = []
+        unwhitened = []
+        bandpassed = []
+
+        for j in indices:
+
+            # Unpack parameters
+            m1, m2 = utils.m1m2_from_mtotq(samples['mtotal'][j], samples['q'][j])
+            m1_SI = m1*lal.MSUN_SI
+            m2_SI = m2*lal.MSUN_SI
+            chi1 = samples['chi1'][j]
+            chi2 = samples['chi2'][j]
+            tilt1 = samples['tilt1'][j]
+            tilt2 = samples['tilt2'][j]
+            phi12 = samples['phi12'][j]
+            theta_jn = samples['theta_jn'][j]
+            phi_jl = samples['phi_jl'][j]
+            dist_mpc = samples['dist'][j]
+            phi_ref = samples['phase'][j]
+
+            # Translate spin convention
+            iota, s1x, s1y, s1z, s2x, s2y, s2z = lalsim.SimInspiralTransformPrecessingNewInitialConditions(
+                theta_jn, phi_jl, tilt1, tilt2, phi12, chi1, chi2, m1_SI, m2_SI, fref, phi_ref
+            )
+
+            # Get time and skyposition 
+            if varySkyPos or varyT:
+
+                ra = samples['ra'][j] if varySkyPos else ra_0
+                dec = samples['dec'][j] if varySkyPos else dec_0
+                psi = samples['psi'][j] if varySkyPos else psi_0
+                tt_geocent = samples['tgps_geocent'][j] if varyT else t0_geocent
+
+                tt_dict, ap_dict = utils.get_tgps_and_ap_dicts(tt_geocent, ifos, ra, dec, psi, verbose=False)
+
+            else: 
+                tt_dict = tpeak_dict.copy()
+                ap_dict = ap_0_dict.copy()
+
+            # Get strain
+            hp, hc = rwf.generate_lal_hphc('NRSur7dq4', m1, m2, 
+                                           [s1x, s1y, s1z], [s2x, s2y, s2z],
+                                           dist_mpc=dist_mpc, dt=dt,
+                                           f_low=fref, f_ref=fref,
+                                           inclination=iota,
+                                           phi_ref=phi_ref, ell_max=None)
+
+            # Time align
+            h = rwf.generate_lal_waveform(hplus=hp, hcross=hc,
+                                          times=time_dict[ifo], 
+                                          triggertime=tt_dict[ifo])
+
+            # Project onto detectors
+            Fp, Fc = ap_dict[ifo]
+            h_ifo = Fp*h.real - Fc*h.imag
+
+            # Whiten
+            freqs, psd = cond_psds[ifo]
+            w_h_ifo = whitenData(h_ifo, psd, freqs)
+
+            # Just bandpass 
+            fmin_bp, fmax_bp = 20, 500
+            h_bp_ifo = rwf.bandpass(h_ifo, time_dict[ifo], fmin_bp, fmax_bp)
+
+            # Add to arrays
+            unwhitened.append(h_ifo)
+            whitened.append(w_h_ifo)
+            bandpassed.append(h_bp_ifo)
+            
+            reconstructions_run[ifo] = {'wh':whitened, 'h':unwhitened, 'bp':bandpassed, 'params':samples[indices]}
+
+    reconstructions[k] = reconstructions_run
+
     # Save results as we go
     np.save(savepath, reconstructions, allow_pickle=True)

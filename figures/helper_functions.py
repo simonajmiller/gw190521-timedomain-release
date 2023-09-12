@@ -139,7 +139,5 @@ def get_PSD(filename, f_low, delta_f):
     
     # The PSD will be interpolated to the requested frequency spacing
     length = int(1024 / delta_f)
-    psd = pycbc.psd.from_txt(filename, length, delta_f,
-                         f_low, is_asd_file=False)
+    psd = pycbc.psd.from_txt(filename, length, delta_f, f_low, is_asd_file=False)
     return psd
-    

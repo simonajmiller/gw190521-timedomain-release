@@ -1,9 +1,10 @@
 # Custom
-data_simonas_laptop/
+data
 figures/for_figure_*_gif/
 .DS_Store
 figures/old/
 gifs/for_gif_0*/*.png
+figures/figure_02b_for_presentation.pdf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

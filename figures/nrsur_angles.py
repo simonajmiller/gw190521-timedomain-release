@@ -46,7 +46,7 @@ sur_dyn = sur._get_surrogate_dynamics
 f_ref = 11      # You may want to use -1, but with Vijay's lalsuite branch
 
 # Load waveform reconstructions and their parameters 
-reconstruction_fname = "waveform_reconstructions_L1.npy"
+reconstruction_fname = "waveform_reconstructions_all_detectors.npy"
 if varyT and varySkyPos: 
     reconstruction_fname = reconstruction_fname.replace('.npy','_VaryTAndSkyPos.npy')
 elif varyT: 
@@ -54,11 +54,12 @@ elif varyT:
 elif varySkyPos: 
     reconstruction_fname = reconstruction_fname.replace('.npy','_FixedT_VarySkyPos.npy')
 
-reconstruction_dict = np.load(data_dir+reconstruction_fname,allow_pickle=True).item()
+reconstruction_dict_all = np.load(data_dir+reconstruction_fname,allow_pickle=True).item()
+reconstruction_dict = {k:reconstruction_dict_all[k]['L1'] for k in reconstruction_dict_all.keys()}
 reconstruction_dict.pop('time samples')
 
 # where to save: 
-savepath = data_dir+reconstruction_fname.replace('waveform_reconstructions_L1', 'angles_vs_time_dict')
+savepath = data_dir+reconstruction_fname.replace('waveform_reconstructions_all_detectors', 'angles_vs_time_dict')
 
 # load in existing if we want 
 if os.path.exists(savepath) and reload:
