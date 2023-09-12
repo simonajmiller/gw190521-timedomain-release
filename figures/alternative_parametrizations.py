@@ -92,7 +92,7 @@ def calculate_rhoP(m1, a1, tilt1, m2, a2, tilt2, phi12, iota, theta_jn, phi_jl, 
 if __name__ == '__main__':
     
     # Load posterior samples 
-    data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data_simonas_laptop/' 
+    data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data/' 
     template = data_dir+'063023_gw190521_{0}_NRSur7dq4_dec8_flow11_fref11_{1}_TstartTend.dat'
 
     paths = {

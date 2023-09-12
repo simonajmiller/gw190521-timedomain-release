@@ -31,7 +31,7 @@ style.use('plotting.mplstyle')
 
 
 #  Path where all data is stored: 
-data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data_simonas_laptop/' 
+data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data/' 
                  
     
 # ----------------------------------------------------------------------------

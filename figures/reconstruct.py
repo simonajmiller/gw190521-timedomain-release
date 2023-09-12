@@ -33,7 +33,7 @@ varyT = args.vary_time
 varySkyPos = args.vary_skypos
 
 #  Path where all data is stored: 
-data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data_simonas_laptop/' 
+data_dir = '/Users/smiller/Documents/gw190521-timedomain-release/data/' 
                  
     
 # ----------------------------------------------------------------------------
