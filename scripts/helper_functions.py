@@ -5,6 +5,7 @@ from scipy.stats import gaussian_kde
 import lal
 from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions
 import pycbc.psd
+from pesummary.gw.conversions import precessing_snr
 
 def load_posterior_samples(pe_output_dir, date, tcutoffs, verbose=False): 
     
@@ -141,3 +142,86 @@ def get_PSD(filename, f_low, delta_f):
     length = int(1024 / delta_f)
     psd = pycbc.psd.from_txt(filename, length, delta_f, f_low, is_asd_file=False)
     return psd
+
+# Generalized chi_p
+# Eq.(15) of https://arxiv.org/abs/2011.11948
+def calculate_generalizedChiP(m1, a1, tilt1, m2, a2, tilt2, phi12): 
+    
+    q = m2/m1
+    omega_tilda = q*(4*q + 3)/(4 + 3*q) 
+    
+    term1 = a1*np.sin(tilt1)
+    term2 = omega_tilda*a2*np.sin(tilt2)
+    term3 = 2*omega_tilda*a1*a2*np.sin(tilt1)*np.sin(tilt2)*np.cos(phi12)
+    
+    gen_chip = np.sqrt(term1**2 + term2**2 + term3**3)
+    
+    return gen_chip
+
+
+# Magnitude of chi_perp
+# Eq.(9) of https://arxiv.org/abs/2012.02209
+def calculate_magnitudeChiPerp(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z): 
+
+    # dimensonless spin vectors
+    vec_chi1 = [s1x, s1y, s1z]
+    vec_chi2 = [s2x, s2y, s2z]
+    
+    # add dimension
+    vec_S1 = np.array(vec_chi1)*m1*m1
+    vec_S2 = np.array(vec_chi2)*m2*m2
+    
+    # total spin 
+    vec_S = vec_S1 + vec_S2 
+        
+    # mag of in plane (perp) components
+    S1_perp = get_mag(vec_S1[0:-1])
+    S2_perp = get_mag(vec_S2[0:-1])
+    S_perp = get_mag(vec_S[0:-1])
+    
+    # figured out norm based on conditions
+    mask = S1_perp>=S2_perp
+    norm1 = m1*m1 + S2_perp
+    norm2 = m2*m2 + S1_perp
+        
+    # calculate mag_ chiperp
+    mag_chiperp = np.zeros(len(m1))
+    mag_chiperp[mask] = S_perp[mask]/norm1[mask]
+    mag_chiperp[~mask] = S_perp[~mask]/norm2[~mask]
+    
+    return mag_chiperp
+
+
+# Rho_p
+# Eq.(39) of https://arxiv.org/abs/1908.05707
+# See: https://git.ligo.org/lscsoft/pesummary/-/blob/master/pesummary/gw/conversions/snr.py#L597
+def calculate_rhoP(m1, a1, tilt1, m2, a2, tilt2, phi12, iota, theta_jn, phi_jl, ra, dec, psi, time, distance,
+                   phi_ref, f_ref, duration, psd_files, delta_f=1/256.): 
+    
+    # Get psds
+    psd_dict = {k:get_PSD(f, f_ref, delta_f) for k,f in psd_files.items()}
+    psd_freqs = psd_dict['H1'].sample_frequencies
+    f_max = psd_freqs[-1]
+    df = psd_freqs[1] -  psd_freqs[0]
+        
+    # Format time and skypos into arrays
+    nsamps = len(m1)
+    ra_array = np.ones(nsamps) * ra 
+    dec_array = np.ones(nsamps) * dec 
+    time_array = np.ones(nsamps) * time 
+    psi_array =  np.ones(nsamps) * psi 
+    
+    # The angle between the total angular momentum and the total orbital angular momentum
+    # (also known as theta_jl) -- see Fig. 1 of https://arxiv.org/abs/1908.05707
+    beta = iota - theta_jn 
+        
+    # Use PEsummary function; note: calculating with IMRPhenomXPHM because NRSur because only freq. domain 
+    # waveforms work with this functon 
+    rho_p = precessing_snr(
+        m1, m2, beta, psi_array, a1, a2, tilt1, tilt2, phi12, theta_jn,
+        ra_array, dec_array, time_array, phi_jl, distance, phi_ref, f_low=f_ref, psd=psd_dict, 
+        approx="IMRPhenomXPHM",f_final=f_max, f_ref=f_ref, duration=duration, df=df, 
+        debug=False
+    )
+    
+    return rho_p

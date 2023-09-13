@@ -7,7 +7,6 @@ gifs/for_gif_0*/*.png
 figures/figure_02b_for_presentation.pdf
 scripts/incl_vs_time.ipynb
 scripts/test_whitening_TD.py
-scripts/alternative_parametrizations.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
