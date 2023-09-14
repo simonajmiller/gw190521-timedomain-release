@@ -19,7 +19,7 @@ import lalsimulation as lalsim
 from scipy.linalg import solve_toeplitz
 import matplotlib.pyplot as plt
 
-from helper_functions import whitenData
+from helper_functions import whitenData, bandpass, m1m2_from_mtotq
 
 # parse args 
 p = argparse.ArgumentParser()
@@ -193,7 +193,7 @@ for k in keys_to_calculate:
         for j in indices:
 
             # Unpack parameters
-            m1, m2 = utils.m1m2_from_mtotq(samples['mtotal'][j], samples['q'][j])
+            m1, m2 = m1m2_from_mtotq(samples['mtotal'][j], samples['q'][j])
             m1_SI = m1*lal.MSUN_SI
             m2_SI = m2*lal.MSUN_SI
             chi1 = samples['chi1'][j]
@@ -248,7 +248,7 @@ for k in keys_to_calculate:
 
             # Just bandpass 
             fmin_bp, fmax_bp = 20, 500
-            h_bp_ifo = rwf.bandpass(h_ifo, time_dict[ifo], fmin_bp, fmax_bp)
+            h_bp_ifo = bandpass(h_ifo, time_dict[ifo], fmin_bp, fmax_bp)
 
             # Add to arrays
             unwhitened.append(h_ifo)
