@@ -6,8 +6,36 @@ import scipy.linalg as sl
 import scipy.signal as sig
 import scipy.stats as ss
 
+
+"""
+Functions to input and condition GW190521 data
+"""
+
 def load_raw_data(path='../data/{}-{}_GWOSC_16KHZ_R2-1242442952-32.hdf5',
                   ifos=('H1', 'L1', 'V1'), verbose=True):
+    
+    """
+    Load in raw interferometer timeseries strain data
+    
+    Parameters
+    ----------
+    path : string (optional)
+        file path to location of raw timeseries strain data for GW190521; the {} 
+        are where the names of the interferometers go
+    ifos : tuple of strings (optional)
+        which interometers to load data from (some combination of 'H1', 'L1',
+        and 'V1')
+    verbose : boolean (optional)
+        whether or not to print out information as the data is loaded
+    
+    Returns
+    -------
+    raw_time_dict : dictionary
+        time stamps for the data from each ifo 
+    raw_data_dict : dictionary
+        the data from each ifo 
+    """
+    
     raw_time_dict = {}
     raw_data_dict = {}
     
@@ -24,10 +52,49 @@ def load_raw_data(path='../data/{}-{}_GWOSC_16KHZ_R2-1242442952-32.hdf5',
         fsamp = 1.0/(ts[1]-ts[0])
         if verbose:
             print("Raw %s data sampled at %.1f Hz" % (ifo, fsamp))
+            
     return raw_time_dict, raw_data_dict
 
+
 def get_pe(raw_time_dict, path='/home/simona.miller/gw190521-td/data/GW190521_posterior_samples.h5', 
-           psd_path=None, verbose=True, return_likelihood=False):
+           psd_path=None, verbose=True):
+    
+    """
+    Load in parameter estimation (pe) samples from LVC GW190521 analysis, and calculate
+    the peak strain time at geocenter and each detector, the detector antenna patterns, 
+    the psds, and the maximum posterior sky position    
+    
+    Parameters
+    ----------
+    raw_time_dict : dictionary
+        output from load_raw_data function above
+    path : string (optional)
+        file path for pe samples
+    psd_path : string (optional)
+        if power spectral density (psd) in a different file than the pe samples, provide
+        the file path here
+    verbose : boolean (optional)
+        whether or not to print out information as the data is loaded
+    
+    Returns
+    -------
+    tpeak_geocent : float
+        the peak strain time at geocenter 
+    tpeak_dict : dictionary
+        the peak strain time at each interferometer  
+    ap_dict : dictionary
+        the antenna patterns at peak strain time for each interferometer  
+    pe_samples : dictionary
+        parameter estimation samples released by the LVC
+    log_prob : `numpy.array`
+        log posterior probabilities corresponding to each pe sample
+    pe_psds : dictionary
+        the power spectral densities for each interferometer in the format 
+        (frequencies, psd values)
+    maxP_skypos : dictionary
+        the right ascension, declination, and polarization angle for the maximum 
+        posterior sample
+    """
     
     # Interferometer names 
     ifos = list(raw_time_dict.keys())
@@ -50,55 +117,80 @@ def get_pe(raw_time_dict, path='/home/simona.miller/gw190521-td/data/GW190521_po
     log_prob = pe_samples['log_likelihood'] + pe_samples['log_prior']
     imax = argmax(log_prob)
     
-    ra = pe_samples['ra'][imax]
-    dec = pe_samples['dec'][imax]
-    psi = pe_samples['psi'][imax]
-    
+    # Sky position for the max. posterior sample
+    ra = pe_samples['ra'][imax]   # right ascension
+    dec = pe_samples['dec'][imax] # declination
+    psi = pe_samples['psi'][imax] # polarization angle
     maxP_skypos = {'ra':ra, 'dec':dec, 'psi':psi}
     
     # Set truncation time
     amporder = 1
     flow = 11
     fstart = flow * 2./(amporder+2)
-    peak_times = rwf.get_peak_times(parameters=pe_samples[imax],
-                                    times=raw_time_dict[ifos[0]], f_ref=11,
+    peak_times = rwf.get_peak_times(pe_samples[imax], raw_time_dict[ifos[0]], f_ref=11,
                                     flow=flow, lal_amporder=1)
     
-    # Peak time = coalescence time 
+    # Get peak time of the signal in LIGO Hanford
     tpeak_H = peak_times['H1']
     dt_H = lal.TimeDelayFromEarthCenter(lal.cached_detector_by_prefix['H1'].location,
                                         ra, dec, lal.LIGOTimeGPS(tpeak_H))
     
+    # Translate to geocenter time
     tpeak_geocent = tpeak_H - dt_H
     
+    # Get peak time and antenna pattern for all ifos
     tpeak_dict, ap_dict = get_tgps_and_ap_dicts(tpeak_geocent, ifos, ra, 
                                                dec, psi, verbose=verbose)
-    if return_likelihood:
-        
-        logL = pe_samples['log_likelihood']
-        imax_L = argmax(logL)
-        maxL_skypos = {'ra':pe_samples['ra'][imax_L], 'dec':pe_samples['dec'][imax_L], 
-                   'psi':pe_samples['psi'][imax_L]}
-        
-        _, ap_dict_L = get_tgps_and_ap_dicts(tpeak_geocent, ifos, maxL_skypos['ra'], 
-                                               maxL_skypos['dec'], maxL_skypos['psi'])
-        
-        return tpeak_geocent, tpeak_dict, ap_dict, pe_samples, log_prob, pe_psds, maxP_skypos, logL, maxL_skypos, ap_dict_L
     
-    else:
-        return tpeak_geocent, tpeak_dict, ap_dict, pe_samples, log_prob, pe_psds, maxP_skypos
+    return tpeak_geocent, tpeak_dict, ap_dict, pe_samples, log_prob, pe_psds, maxP_skypos
 
 
 def get_tgps_and_ap_dicts(tgps_geocent, ifos, ra, dec, psi, verbose=True):
     
-    gmst = lal.GreenwichMeanSiderealTime(lal.LIGOTimeGPS(tgps_geocent))
+    """
+    Get the time and antenna pattern at each detector at the given geocenter time and 
+    sky position 
+    
+    Parameters
+    ----------
+    tgps_geocent : float
+        geocenter time
+    ifos : tuple of strings (optional)
+        which interometers to load data from (some combination of 'H1', 'L1',
+        and 'V1')
+    ra : float
+        right ascension
+    dec : float
+        declination
+    psi : float
+        polarization angle
+    verbose : boolean (optional)
+        whether or not to print out information calculated
+    
+    Returns
+    -------
+    tgps_dict : dictionary
+        time at each detector at the given geocenter time and sky position 
+    ap_dict : dictionary
+        antenna pattern for each interferometer at the given geocenter time and sky 
+        position 
+    """
     
     tgps_dict = {}
     ap_dict = {}
+    
+    # Greenwich mean sidereal time 
+    gmst = lal.GreenwichMeanSiderealTime(lal.LIGOTimeGPS(tgps_geocent))
+    
+    # Cycle through interferometers
     for ifo in ifos:
+        
+        # Calculate time delay between geocenter and this ifo 
         dt_ifo = lal.TimeDelayFromEarthCenter(lal.cached_detector_by_prefix[ifo].location,
                                               ra, dec, lal.LIGOTimeGPS(tgps_geocent))
         tgps_dict[ifo] = tgps_geocent + dt_ifo
+        
+        # Calculate antenna pattern 
         ap_dict[ifo] = lal.ComputeDetAMResponse(lal.cached_detector_by_prefix[ifo].response,
                                                 ra, dec, psi, gmst)
         if verbose:
@@ -110,11 +202,47 @@ def get_tgps_and_ap_dicts(tgps_geocent, ifos, ra, dec, psi, verbose=True):
 def condition(raw_time_dict, raw_data_dict, t0_dict, ds_factor=16, f_low=11,
               scipy_decimate=True, verbose=True):
     
+    """
+    Filter and downsample the data, and locate target sample corresponding
+    to the times in t0_dict
+    
+    Parameters
+    ----------
+    raw_time_dict : dictionary
+        time stamps for the raw strain data from each ifo (output from load_raw_data 
+        function above)
+    raw_data_dict : dictionary
+        the raw strain data data from each ifo (output from load_raw_data function 
+        above)
+    t0_dict : dictionary
+        time at each interferometer find the sample index of
+    ds_factor : float (optional)
+        downsampling factor for the data; defaults to 16 which takes ~16kHz data to 
+        1024 Hz data
+    f_low : float (optional)
+        frequency for the highpass filter
+    scipy_decimate : boolean (optional)
+        whether or not to use the scipy decimate function for downsampling, defaults
+        to True 
+    verbose : boolean (optional)
+        whether or not to print out information calculated
+        
+    Returns
+    -------
+    time_dict : dictionary
+        time stamps for the conditioned strain data from each ifo 
+    data_dict : dictionary
+        the conditioned strain data from each ifo 
+    i0_dict : dictionary
+        indices corresponding to the time values in t0_dict
+    """
+    
     ifos = list(raw_time_dict.keys())
     data_dict = {}
     time_dict = {}
     i0_dict = {}
     
+    # Cycle through interferometers
     for ifo in ifos:
         
         # Find the nearest sample in H to the designated cutoff time t0

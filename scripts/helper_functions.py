@@ -285,8 +285,6 @@ def transform_spins(theta_jn, phi_jl, tilt1, tilt2, phi12, a1, a2, m1, m2, f_ref
         primary mass in solar masses
     m2 : `numpy.array`
         secondary mass (m2 <= m1) in solar masses
-    tilt2 : `numpy.array`
-        tilt angle (in radians) of the secondary mass
     f_ref : float
         reference frequency (in Hertz)
     phi_ref : `numpy.array`

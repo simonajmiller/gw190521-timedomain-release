@@ -111,21 +111,20 @@ np.save(data_dir+'LVC_time_data.npy', time_dict, allow_pickle=True)
 pathname = '{0}_gw190521_{1}_NRSur7dq4_dec8_flow11_fref11_{2}_TstartTend'
 path_template = data_dir + pathname + '.dat'
 
+# options to load the samples with vary time of coalescence and/or sky position
 if varyT and varySkyPos: 
     path_template = path_template.replace('.dat','_VaryTAndSkyPos.dat')
-    date = '062323'
 elif varyT: 
     path_template = path_template.replace('.dat','_VaryT_FixedSkyPos.dat')
-    date = '062823'
-else: 
-    date = '063023'
-    
-paths = {}
+elif varySkyPos: 
+    path_template = path_template.replace('.dat','_FixedT_VarySkyPos.dat')
 
+date = '063023'
 runs = ['insp', 'rd']
 tcutoffs = ['m50M', 'm40M', 'm37.5M', 'm35M', 'm32.5M', 'm30M', 'm27.5M', 'm25M', 'm22.5M', 'm20M', 
                 'm17.5M', 'm15M', 'm12.5M', 'm10M', 'm7.5M', 'm5M', 'm2.5M', '0M', '2.5M', '5M', '7.5M', 
                 '10M', '12.5M', '15M', '17.5M', '20M', '30M', '40M', '50M']
+paths = {}
 for run in runs: 
     for tcut in tcutoffs: 
         key = f'{run} {tcut}'
@@ -147,7 +146,7 @@ for k, p in paths.items():
 # ----------------------------------------------------------------------------
 # Generate reconstructions from posteriors
 
-# Reference freq = 11 Hz to correspond to LVK analysis
+# Reference freq = 11 Hz to correspond to LVC analysis
 fref = 11
 
 # where to save: 
