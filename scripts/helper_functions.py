@@ -10,7 +10,7 @@ from gwpy.signal import filter_design
 Functions for loading in relevant data
 """
 
-def load_posterior_samples(pe_output_dir, date, tcutoffs, verbose=False): 
+def load_posterior_samples(pe_output_dir, date='063023', tcutoffs=None, verbose=False): 
     
     """
     Load in the GW190521 posterior samples in a given folder, date, and cutoff times. 
@@ -19,10 +19,12 @@ def load_posterior_samples(pe_output_dir, date, tcutoffs, verbose=False):
     ----------
     pe_output_dir : string
         folder where samples are saved
-    date : string
-        date for runs, e.g. 063023
-    tcutoffs : list of strings
-        cutoff times corresponding to runs to load, e.g. ['m5M', '0M', '20M']
+    date : string (optional)
+        date for runs; defaults to 063023 (the date of the samples included in the 
+        data release)
+    tcutoffs : list of strings (optional)
+        cutoff times corresponding to runs to load, e.g. ['m5M', '0M', '20M']; 
+        defaults to all cutoff times
     verbose : boolean (optional)
         if true, prints out progress as loading in samples
         
@@ -38,6 +40,14 @@ def load_posterior_samples(pe_output_dir, date, tcutoffs, verbose=False):
     path_template = pe_output_dir+'{0}_gw190521_{1}_NRSur7dq4_dec8_flow11_fref11_{2}_TstartTend.dat'
 
     runs = ['insp', 'rd']
+    
+    if tcutoffs=None: 
+        # Defaults to all cutoff times
+        tcutoffs = [
+            'm50M', 'm40M', 'm37.5M', 'm35M', 'm32.5M', 'm30M', 'm27.5M', 'm25M', 'm22.5M', 
+            'm20M', 'm17.5M', 'm15M', 'm12.5M', 'm10M', 'm7.5M', 'm5M','m2.5M', '0M', '2.5M', 
+            '5M', '7.5M', '10M', '12.5M', '15M', '17.5M', '20M', '30M', '40M', '50M'
+        ]
 
     # samples from the various time cuts
     paths = {}
