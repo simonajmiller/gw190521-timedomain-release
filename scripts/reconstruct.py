@@ -43,7 +43,7 @@ ifos = ['H1', 'L1', 'V1']
 data_path = data_dir+'GW190521_data/{}-{}_GWOSC_16KHZ_R2-1242442952-32.hdf5'
 raw_time_dict, raw_data_dict = utils.load_raw_data(ifos=ifos,path=data_path)
 
-psd_path = data_dir+'GW190521_data/glitch_median_PSD_forLI_{}.dat'
+psd_path = data_dir+'GW190521_data/glitch_median_PSD_{}.dat'
 pe_path = data_dir+'GW190521_data/GW190521_posterior_samples.h5'
 pe_out = utils.get_pe(raw_time_dict, path=pe_path, psd_path=psd_path)
 tpeak_geocent, tpeak_dict, _, pe_samples, log_prob, pe_psds, maxP_skypos = pe_out
