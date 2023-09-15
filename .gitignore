@@ -1,5 +1,4 @@
-# Custom
-data
+# Custom specific files to ignore
 figures/for_figure_*_gif/
 .DS_Store
 figures/old/
@@ -8,6 +7,14 @@ figures/figure_02b_for_presentation.pdf
 scripts/incl_vs_time.*
 scripts/test_whitening_TD.py
 scripts/plotting.mplstyle
+
+# Ignore data folder except shell scripts to download data from zenodo
+# and the LVC samples, and the PSD files  
+data/*.*
+!data/download_data_from_zenodo.sh
+data/GW190521_data/*
+!data/GW190521_data/*.sh
+!data/GW190521_data/*.dat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
