@@ -56,7 +56,7 @@ def load_raw_data(path='../data/{}-{}_GWOSC_16KHZ_R2-1242442952-32.hdf5',
     return raw_time_dict, raw_data_dict
 
 
-def get_pe(raw_time_dict, path='/home/simona.miller/gw190521-td/data/GW190521_posterior_samples.h5', 
+def get_pe(raw_time_dict, path='../data/GW190521_posterior_samples.h5', 
            psd_path=None, verbose=True):
     
     """
