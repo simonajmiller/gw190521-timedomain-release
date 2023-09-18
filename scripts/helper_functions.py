@@ -41,7 +41,7 @@ def load_posterior_samples(pe_output_dir, date='063023', tcutoffs=None, verbose=
 
     runs = ['insp', 'rd']
     
-    if tcutoffs=None: 
+    if tcutoffs is None: 
         # Defaults to all cutoff times
         tcutoffs = [
             'm50M', 'm40M', 'm37.5M', 'm35M', 'm32.5M', 'm30M', 'm27.5M', 'm25M', 'm22.5M', 
@@ -276,45 +276,45 @@ def transform_spins(theta_jn, phi_jl, tilt1, tilt2, phi12, a1, a2, m1, m2, f_ref
     
     Parameters
     ----------
-    theta_jn : `numpy.array`
+    theta_jn : `numpy.array` or float
         zenith angle (in radians) between J (total angular momentum) and N (line of sight)
-    phi_jl : `numpy.array`
+    phi_jl : `numpy.array` or float
         azimuthal angle (in radians) of L_N (orbital angular momentum) on its cone about J
-    tilt1 : `numpy.array`
+    tilt1 : `numpy.array` or float
         tilt angle (in radians) of the primary mass
-    tilt2 : `numpy.array`
+    tilt2 : `numpy.array` or float
         tilt angle (in radians) of the secondary mass
-    phi12 : `numpy.array`
+    phi12 : `numpy.array` or float
         azimuthal angle  (in radians) between the projections of the component spins onto 
         the orbital plane
-    a1 : `numpy.array`
+    a1 : `numpy.array` or float
         spin magnitude of the primary mass
-    a2 : `numpy.array`
+    a2 : `numpy.array` or float
         spin magnitude of the secondary mass
-    m1 : `numpy.array`
+    m1 : `numpy.array` or float
         primary mass in solar masses
-    m2 : `numpy.array`
+    m2 : `numpy.array` or float
         secondary mass (m2 <= m1) in solar masses
     f_ref : float
         reference frequency (in Hertz)
-    phi_ref : `numpy.array`
+    phi_ref : `numpy.array` or float
         reference phase (in radians) 
     
     Returns
     -------
-    iota : `numpy.array` 
+    iota : `numpy.array` or float 
         inclination angle of the binary at f_ref
-    s1x : `numpy.array` 
+    s1x : `numpy.array`  or float
         x-component spin of primary mass at f_ref
-    s1y : `numpy.array`
+    s1y : `numpy.array` or float
         y-component spin of primary mass at f_ref
-    s1z : `numpy.array`
+    s1z : `numpy.array` or float
         z-component spin of primary mass at f_ref
-    s2x : `numpy.array`
+    s2x : `numpy.array` or float
         x-component spin of secondary mass at f_ref
-    s2y : `numpy.array`
+    s2y : `numpy.array` or float
         y-component spin of secondary mass at f_ref
-    s2z : `numpy.array`
+    s2z : `numpy.array` or float
         z-component spin of secondary mass at f_ref
     """
 
@@ -322,21 +322,27 @@ def transform_spins(theta_jn, phi_jl, tilt1, tilt2, phi12, a1, a2, m1, m2, f_ref
     m1_SI = m1*lal.MSUN_SI   
     m2_SI = m2*lal.MSUN_SI
     
-    nsamps = len(m1)
-    incl = np.zeros(nsamps)
-    s1x = np.zeros(nsamps)
-    s1y = np.zeros(nsamps)
-    s1z = np.zeros(nsamps)
-    s2x = np.zeros(nsamps)
-    s2y = np.zeros(nsamps)
-    s2z = np.zeros(nsamps)
-    
-    for i in range(nsamps): 
-        
-        incl[i], s1x[i], s1y[i], s1z[i], s2x[i], s2y[i], s2z[i] = SimInspiralTransformPrecessingNewInitialConditions(
-            theta_jn[i], phi_jl[i], tilt1[i], tilt2[i], phi12[i], a1[i], a2[i], 
-            m1_SI[i], m2_SI[i], f_ref, phi_ref[i]
+    # Check if float or array 
+    if isinstance(m1, float):
+        incl, s1x, s1y, s1z, s2x, s2y, s2z = SimInspiralTransformPrecessingNewInitialConditions(
+            theta_jn, phi_jl, tilt1, tilt2, phi12, a1, a2, m1_SI, m2_SI, f_ref, phi_ref
         )
+    else:
+        nsamps = len(m1)
+        incl = np.zeros(nsamps)
+        s1x = np.zeros(nsamps)
+        s1y = np.zeros(nsamps)
+        s1z = np.zeros(nsamps)
+        s2x = np.zeros(nsamps)
+        s2y = np.zeros(nsamps)
+        s2z = np.zeros(nsamps)
+
+        for i in range(nsamps): 
+
+            incl[i], s1x[i], s1y[i], s1z[i], s2x[i], s2y[i], s2z[i] = SimInspiralTransformPrecessingNewInitialConditions(
+                theta_jn[i], phi_jl[i], tilt1[i], tilt2[i], phi12[i], a1[i], a2[i], 
+                m1_SI[i], m2_SI[i], f_ref, phi_ref[i]
+            )
         
     return incl, s1x, s1y, s1z, s2x, s2y, s2z
 

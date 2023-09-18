@@ -127,8 +127,8 @@ def get_pe(raw_time_dict, path='../data/GW190521_posterior_samples.h5',
     amporder = 1
     flow = 11
     fstart = flow * 2./(amporder+2)
-    peak_times = rwf.get_peak_times(pe_samples[imax], raw_time_dict[ifos[0]], f_ref=11,
-                                    flow=flow, lal_amporder=1)
+    peak_times = rwf.get_peak_times(parameters=pe_samples[imax], times=raw_time_dict[ifos[0]], 
+                                    f_ref=11, flow=flow, lal_amporder=1)
     
     # Get peak time of the signal in LIGO Hanford
     tpeak_H = peak_times['H1']
