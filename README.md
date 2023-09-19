@@ -13,7 +13,7 @@ In this `README` we describe how to download the posterior samples, run scripts 
 
 ## Downloading data
 
-To download our posterior samples, enter the `data` folder and enter the following: 
+After cloning this repository, to download our posterior samples, enter the `data` folder and enter the following: 
 ```
 chmod +x download_data_from_zenodo.sh
 ./download_data_from_zenodo.sh
