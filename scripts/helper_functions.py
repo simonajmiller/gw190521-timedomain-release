@@ -427,6 +427,25 @@ def bandpass(h, times, fmin, fmax):
 
 
 """
+Functions to calculate matched-filter SNR; 
+See Eqs. (50) through (53) of  https://arxiv.org/pdf/2107.05609.pdf
+"""
+
+def inner_product(x, y, rho): 
+    prod = x @ sl.solve_toeplitz(rho, y)
+    return prod
+
+def calc_mf_SNR(d, s, rho): 
+    snr = inner_product(s, d, rho) / np.sqrt(inner_product(s, s, rho))
+    return snr
+
+def calc_network_mf_SNR(snr_list): 
+    snrs_sq = [snr**2 for snr in snr_list]
+    network_snr = np.sqrt(sum(snrs_sq))
+    return network_snr
+
+
+"""
 Other miscellaneous functions
 """
 
