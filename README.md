@@ -1,6 +1,6 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8349582.svg)](https://doi.org/10.5281/zenodo.8349582)
 
-[add DOI for paper once available]
+(**add DOI for paper available**)
 
 
 # gw190521-timedomain-release
