@@ -3,14 +3,8 @@ os.environ["LAL_DATA_PATH"] = os.path.join(os.environ['HOME'], 'lalsuite-extra/d
 
 import numpy as np
 import argparse
-import h5py
 import lal
-import scipy.linalg as sl
-import scipy.signal as sig
-import scipy.stats as ss
 from collections import OrderedDict
-import pandas as pd
-from contextlib import closing
 import sys
 sys.path.append('../')
 import utils
@@ -230,7 +224,7 @@ for k in keys_to_calculate:
                                            dist_mpc=dist_mpc, dt=dt,
                                            f_low=fref, f_ref=fref,
                                            inclination=iota,
-                                           phi_ref=phi_ref, ell_max=None)
+                                           phi_ref=phi_ref)
 
             # Time align
             h = rwf.generate_lal_waveform(hplus=hp, hcross=hc,

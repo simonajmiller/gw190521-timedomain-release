@@ -19,7 +19,6 @@ os.environ["LAL_DATA_PATH"] = os.path.join(os.environ['HOME'], 'lalsuite-extra/d
 
 import numpy as np
 import argparse
-import matplotlib.pyplot as P
 import lal
 from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions
 from lalsimulation.nrfits.NRSur7dq4Remnant import NRSur7dq4Remnant

@@ -48,7 +48,7 @@ def get_peak_times(*args, **kwargs):
     # Get time-domain strain
     h_td = generate_lal_waveform(approx, p['mass_1'], p['mass_2'], chi1, chi2, dist_mpc=p['luminosity_distance'],
                                   dt=delta_t, f_low=f_start, f_ref=fp['f_ref'], inclination=iota,
-                                  phi_ref=p['phase'], ell_max=None, times=times, triggertime=p['geocent_time'])
+                                  phi_ref=p['phase'], times=times, triggertime=p['geocent_time'])
     # FFT
     hp_td = h_td.real
     hc_td = -h_td.imag
@@ -100,6 +100,8 @@ def generate_lal_hphc(approximant_key, m1_msun, m2_msun, chi1, chi2, dist_mpc=1,
     m2_kg = m2_msun*lal.MSUN_SI
     
     distance = dist_mpc*1e6*lal.PC_SI
+    
+    param_dict = lal.CreateDict()
 
     hp, hc = lalsim.SimInspiralChooseTDWaveform(m1_kg, m2_kg,
                                                 chi1[0], chi1[1], chi1[2],

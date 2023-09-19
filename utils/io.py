@@ -1,10 +1,8 @@
 from pylab import *
-import h5py
 import lal
+import h5py
 from . import reconstructwf as rwf
-import scipy.linalg as sl
 import scipy.signal as sig
-import scipy.stats as ss
 
 
 """
