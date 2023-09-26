@@ -47,7 +47,11 @@ python nrsur_angles.py
 ```
 This script generates the output file `angles_vs_time_dict.npy` in the `data` folder.. It also has the optional `--reload` flag to pick up where the script left off in case of an incomplete calculation. 
 
-Finally, run the jupyter notebook `calculate_snrs.ipynb` to generate `snrs.npy` in the `data`, a dictionary storing the signal to noise ratios for the waveform in each detector corresponding to our posterior samples. 
+Finally, run the script
+```
+calculate_SNRs.py
+```
+ to generate `snrs.npy` in the `data` folder, a dictionary storing the signal to noise ratios for the waveform in each detector corresponding to our posterior samples. 
 
 ## Making figures and gifs
 
