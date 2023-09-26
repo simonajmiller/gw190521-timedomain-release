@@ -351,7 +351,7 @@ def transform_spins(theta_jn, phi_jl, tilt1, tilt2, phi12, a1, a2, m1, m2, f_ref
 Functions to whiten and bandpass the data
 """
 
-def whitenData(h_td, psd, freqs):
+def whitenData(h_td, times, psd, psd_freqs):
     
     """
     Whiten a timeseries with a given power spectral density
@@ -360,9 +360,11 @@ def whitenData(h_td, psd, freqs):
     ----------
     h_td : `numpy.array`
         un-whitened strain data in the time domain
+    times : `numpy.array`
+        timestamps of h_td
     psd : `numpy.array`
         power spectral density used to whiten the data at frequencies freqs
-    freqs : `numpy.array`
+    psd_freqs : `numpy.array`
         frequencies corresponding to the psd
     
     Returns
@@ -371,22 +373,22 @@ def whitenData(h_td, psd, freqs):
         whitened time domain data at the same timestamps as the input
     """
     
-    # Get segment length and sampling rate 
-    dt = 0.5 / round(freqs.max())
-    df = freqs[1] - freqs[0]
-    seglen = 1 / df
-    sampling_rate = 1 / dt 
-    N = int(seglen * sampling_rate) - 1
+    # Get segment length and frequencies
+    dt = times[1] - times[0]
+    Nt = len(h_td)
+    freqs = np.fft.rfftfreq(Nt, dt)
+    
+    # Interpolate PSD to the correct frequencies
+    interp_psd = np.interp(freqs, psd_freqs, psd)
     
     # Into fourier domain
-    h_fd = np.fft.rfft(h_td, n=N) / N
+    h_fd = np.fft.rfft(h_td)
     
-    # Divide out ASD 
-    wh_fd = h_fd/np.sqrt(psd * seglen / 4)
+    # Divide out ASD and normalize properly 
+    wh_fd = h_fd / (np.sqrt(interp_psd /dt/2.))
     
     # Back into time domain
-    wh_td = 0.5*np.fft.irfft(wh_fd) / dt
-    wh_td = wh_td[:len(h_td)]
+    wh_td = np.fft.irfft(wh_fd, n=Nt)
     
     return wh_td
 
@@ -534,3 +536,22 @@ def get_mag(v):
     v_squared = [x*x for x in v]
     mag_v = np.sqrt(sum(v_squared))
     return mag_v
+
+
+def unit_vector(v):
+    
+    """
+    Get the unit of a vector v
+    
+    Parameters
+    ----------
+    v : `numpy.array`
+        vector with components v[0], v[1], v[2], etc.
+    
+    Returns
+    -------
+    unit_v : `numpy.array`
+        v divided by its magnitude
+    """
+    unit_v =  v / get_mag(v)
+    return unit_v

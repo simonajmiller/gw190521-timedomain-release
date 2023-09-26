@@ -13,7 +13,7 @@ import lalsimulation as lalsim
 from scipy.linalg import solve_toeplitz
 import matplotlib.pyplot as plt
 
-from helper_functions import whitenData, bandpass, m1m2_from_mtotq
+from helper_functions import whitenData, m1m2_from_mtotq
 
 # parse args 
 p = argparse.ArgumentParser()
@@ -91,7 +91,8 @@ for ifo, I0 in i0_dict.items():
     data_dict[ifo] = data_dict[ifo][I0-Npre:I0+Npost] 
 
 # Whiten detector strain data
-data_dict_wh = {ifo:whitenData(data, cond_psds[ifo][1], cond_psds[ifo][0]) for ifo, data in data_dict.items()}
+data_dict_wh = {ifo:whitenData(data, time_dict[ifo], cond_psds[ifo][1], 
+                               cond_psds[ifo][0]) for ifo, data in data_dict.items()}
    
 # Save detector data, whitened and colored
 np.save(data_dir+'LVC_strain_data.npy', data_dict, allow_pickle=True)
@@ -181,7 +182,6 @@ for k in keys_to_calculate:
         
         whitened = []
         unwhitened = []
-        bandpassed = []
 
         for j in indices:
 
@@ -227,9 +227,9 @@ for k in keys_to_calculate:
                                            phi_ref=phi_ref)
 
             # Time align
+            times = time_dict[ifo]
             h = rwf.generate_lal_waveform(hplus=hp, hcross=hc,
-                                          times=time_dict[ifo], 
-                                          triggertime=tt_dict[ifo])
+                                          times=times, triggertime=tt_dict[ifo])
 
             # Project onto detectors
             Fp, Fc = ap_dict[ifo]
@@ -237,18 +237,13 @@ for k in keys_to_calculate:
 
             # Whiten
             freqs, psd = cond_psds[ifo]
-            w_h_ifo = whitenData(h_ifo, psd, freqs)
-
-            # Just bandpass 
-            fmin_bp, fmax_bp = 20, 500
-            h_bp_ifo = bandpass(h_ifo, time_dict[ifo], fmin_bp, fmax_bp)
+            w_h_ifo = whitenData(h_ifo, times, psd, freqs)
 
             # Add to arrays
             unwhitened.append(h_ifo)
             whitened.append(w_h_ifo)
-            bandpassed.append(h_bp_ifo)
             
-            reconstructions_run[ifo] = {'wh':whitened, 'h':unwhitened, 'bp':bandpassed, 'params':samples[indices]}
+        reconstructions_run[ifo] = {'wh':whitened, 'h':unwhitened, 'params':samples[indices]}
 
     reconstructions[k] = reconstructions_run
 

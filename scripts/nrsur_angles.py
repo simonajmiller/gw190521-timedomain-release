@@ -10,10 +10,6 @@
 ##
 #############################################################################
 
-import sys
-sys.path.append('../')
-import utils
-
 import os
 os.environ["LAL_DATA_PATH"] = os.path.join(os.environ['HOME'], 'lalsuite-extra/data/lalsimulation')
 
@@ -23,6 +19,8 @@ import lal
 from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions
 from lalsimulation.nrfits.NRSur7dq4Remnant import NRSur7dq4Remnant
 from gwtools import rotations   # pip install gwtools
+
+from helper_functions import unit_vector,  m1m2_from_mtotq
 
 # parse args 
 p = argparse.ArgumentParser()
@@ -89,7 +87,7 @@ for key in keys_to_calculate:
     
         M = samp['mtotal'] # Detector frame total mass
         q = samp['q']
-        m1, m2 = utils.m1m2_from_mtotq(M, q) # Detector frame component masses
+        m1, m2 = m1m2_from_mtotq(M, q) # Detector frame component masses
         eta=m1*m2/(m1+m2)/(m1+m2) # Symmetric mass ratio
         m1_SI = m1*lal.MSUN_SI    # Convert to kg
         m2_SI = m2*lal.MSUN_SI
@@ -153,11 +151,11 @@ for key in keys_to_calculate:
         # Add it all up to get total angular momentum at ref freq 
         # (in PN limit, it is constant in time so we don't need to time evolve)
         J = L[0] + S_0      
-        Jhat = utils.unit_vector(J) # unit vector
+        Jhat = unit_vector(J) # unit vector
         
         # Just xy components
-        Lhat_xy = np.asarray([utils.unit_vector(Lhat[i,:-1]) for i in range(Lhat.shape[0])])
-        Jhat_xy = utils.unit_vector(Jhat[:-1])
+        Lhat_xy = np.asarray([unit_vector(Lhat[i,:-1]) for i in range(Lhat.shape[0])])
+        Jhat_xy = unit_vector(Jhat[:-1])
 
         # Get angles between J and L as function of time
         thetajl_vs_t = np.arccos(np.sum(Lhat * Jhat, axis=1))
