@@ -148,8 +148,7 @@ for ifo in ['H1', 'L1', 'V1']:
 
     # Cycle through runs 
     for run in runs: 
-        print(run)
-
+        
         # Start and end time of analysis depend on the run
         if run=='full' or run=='prior': 
             tstart = times_M[0]
@@ -180,7 +179,7 @@ for ifo in ['H1', 'L1', 'V1']:
         
         # Generate reconstructions
         h_array = []
-        for samp in samples:
+        for samp in samples[np.random.choice(len(samples), size=1000)]:
 
             # Unpack parameters
             m1, m2 = m1m2_from_mtotq(samp['mtotal'], samp['q'])
@@ -222,13 +221,13 @@ for ifo in ['H1', 'L1', 'V1']:
 
         # Get ACF
         rho = rho_dict[ifo]
-        Nanalyze = len(h.T)
+        Nanalyze = len(np.transpose(h_array))
         print(run, Nanalyze)
 
         # Calculate SNR for each reconstruction
         d = data_dict[ifo][mask]
-        snrs = np.zeros(len(h))
-        for i, s in enumerate(h):
+        snrs = np.zeros(len(h_array))
+        for i, s in enumerate(h_array):
             snrs[i] = calc_mf_SNR(d, s, rho[:Nanalyze]) 
 
         snr_dict_ifo[run] = snrs
@@ -246,40 +245,18 @@ print(('Run\t L1 SNR').expandtabs(12) + '\tNetwork SNR'.expandtabs(5))
 print('-----------------------------------')
 
 for run, snrs in snr_dict['L1'].items(): 
-    
-    if run in runs_to_plot:
-    
-        # L1
-        med_snr_L1 = np.quantile(np.abs(snrs), 0.5)
-
-        # Network 
-        network_snrs = np.asarray([calc_network_mf_SNR([L, H, V]) for L, H, V in zip(snr_dict['L1'][run], 
-                                                                                     snr_dict['H1'][run], 
-                                                                                     snr_dict['V1'][run])])
-        med_network_snr = np.quantile(network_snrs[~np.isnan(network_snrs)], 0.5)
-
-        # print
-        run_lbl = run.replace('m', '-').replace('insp', 't <').replace('rd', 't >')
-
-        print(f"{run_lbl:<12} {round(med_snr_L1, 2):<10} {round(med_network_snr, 2)}")
         
+    # L1
+    med_snr_L1 = np.quantile(np.abs(snrs), 0.5)
+
+    # Network 
+    network_snrs = np.asarray([calc_network_mf_SNR([L, H, V]) for L, H, V in zip(snr_dict['L1'][run], 
+                                                                                 snr_dict['H1'][run], 
+                                                                                 snr_dict['V1'][run])])
+    med_network_snr = np.quantile(network_snrs[~np.isnan(network_snrs)], 0.5)
+
+    # print
+    run_lbl = run.replace('m', '-').replace('insp', 't <').replace('rd', 't >')
+
+    print(f"{run_lbl:<12} {round(med_snr_L1, 2):<10} {round(med_network_snr, 2)}")
         
-# And make figure 
-plt.figure(figsize=(12, 5))
-
-for run in snr_dict['L1'].keys(): 
-    
-    if run in runs_to_plot:
-    
-        snrs = [calc_network_mf_SNR([L, H, V]) for L, H, V in zip(snr_dict['L1'][run], 
-                                                                  snr_dict['H1'][run], 
-                                                                  snr_dict['V1'][run])]
-
-        lbl = run.replace('m', '-').replace('insp', 't $<$').replace('rd', 't $>$')
-        plt.hist(snrs, histtype='step', label=lbl, density=True, bins=np.linspace(0,15,100))
-
-plt.legend(loc='upper left',ncols=2)
-plt.xlabel(r'$\mathrm{SNR}_\mathrm{mf}$', fontsize=15)
-plt.ylabel(r'$p(\mathrm{SNR}_\mathrm{mf})$', fontsize=15)
-plt.xlim(0,15)
-plt.show()

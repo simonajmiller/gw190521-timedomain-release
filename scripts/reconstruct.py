@@ -66,7 +66,7 @@ for ifo, freq_psd in pe_psds.items():
 # ----------------------------------------------------------------------------
 # Condition data
 
-ds_factor = 8
+ds_factor = 16 # in analyses, we used 2048 Hz but for plotting/whitening, use 1024 Hz for consistency with LVK
 f_low = 11
 
 # i0 = index corresponding to peak time
@@ -84,15 +84,15 @@ Npost = int(round(TPost / dt)) + 1  # must add one so that the target time is ac
                                          # otherwise WF placement gets messed up   
 Nanalyze = Npre + Npost
 
-# Crop analysis data to specified duration.
+# Crop analysis data to specified duration
 for ifo, I0 in i0_dict.items():
     # I0 = sample closest to desired time
     time_dict[ifo] = time_dict[ifo][I0-Npre:I0+Npost]
-    data_dict[ifo] = data_dict[ifo][I0-Npre:I0+Npost] 
-
+    data_dict[ifo] = data_dict[ifo][I0-Npre:I0+Npost]
+    
 # Whiten detector strain data
-data_dict_wh = {ifo:whitenData(data, time_dict[ifo], cond_psds[ifo][1], 
-                               cond_psds[ifo][0]) for ifo, data in data_dict.items()}
+data_dict_wh = {ifo:whitenData(data_dict[ifo], time_dict[ifo], cond_psds[ifo][1], 
+                               cond_psds[ifo][0]) for ifo in ifos}
    
 # Save detector data, whitened and colored
 np.save(data_dir+'LVC_strain_data.npy', data_dict, allow_pickle=True)

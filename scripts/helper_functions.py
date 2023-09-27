@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import gaussian_kde
+import scipy.linalg as sl
 import lal
 from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions
 import pycbc.psd
