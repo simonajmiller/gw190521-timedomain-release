@@ -5,7 +5,7 @@
 
 # gw190521-timedomain-release
 
-This repository hosts scripts to download and plot the data in [**"GW190521: tracing imprints of spin-precession on the most massive black hole binary"** - Miller et. al 2023](https://arxiv.org/abs/2310.01544).
+This repository hosts scripts to download and plot the data in [***"GW190521: tracing imprints of spin-precession on the most massive black hole binary"*** - Miller et. al 2023](https://arxiv.org/abs/2310.01544).
 
 Our dataset itself -- containing posterior samples -- is available to download from [Zenodo](https://doi.org/10.5281/zenodo.8349582).
 
