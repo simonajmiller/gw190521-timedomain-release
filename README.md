@@ -45,7 +45,7 @@ Next, to track the time evolution of the inclination angle of the binary over ti
 ```
 python nrsur_angles.py
 ```
-This script generates the output file `angles_vs_time_dict.npy` in the `data` folder.. It also has the optional `--reload` flag to pick up where the script left off in case of an incomplete calculation. 
+This script generates the output file `angles_vs_time_dict.npy` in the `data` folder. It also has the optional `--reload` flag to pick up where the script left off in case of an incomplete calculation. 
 
 Finally, run the script
 ```
