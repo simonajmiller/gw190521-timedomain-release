@@ -1,8 +1,6 @@
+[![Static Badge](https://img.shields.io/badge/arXiv-2310.01544-%23B31B1B)](https://doi.org/10.48550/arXiv.2310.01544)
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8349582.svg)](https://doi.org/10.5281/zenodo.8349582)
-
-[![Static Badge](https://img.shields.io/badge/arXiv-2310.01544-%23B31B1B)](https://doi.org/10.48550/arXiv.2310.01544)]
-
-
 
 
 # gw190521-timedomain-release
