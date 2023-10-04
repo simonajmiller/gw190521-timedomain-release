@@ -10,6 +10,7 @@ scripts/test_whitening_FD.py
 scripts/whitening_comparison.ipynb
 scripts/plotting.mplstyle
 *.pdf
+latex
 
 # Ignore data folder except shell scripts to download data from zenodo
 # and the LVC samples, and the PSD files  
