@@ -15,6 +15,7 @@ In this `README` we describe how to download the posterior samples, run scripts 
 
 After cloning this repository, to download our posterior samples, enter the `data` folder and enter the following: 
 ```
+cd data
 chmod +x download_data_from_zenodo.sh
 ./download_data_from_zenodo.sh
 ```
@@ -32,6 +33,7 @@ The `scripts` folder holds all the scripts and notebooks necessary to generate a
 
 First, to generate waveform reconstructions corresponding to our posterior samples: 
 ```
+cd ../../scripts
 python reconstruct.py
 ```
 This script generates the output file `waveform_reconstructions_all_detections.npy` in the `data`. folder. 
